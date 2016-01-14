@@ -28,7 +28,7 @@ function cutPath(path, depth, bitLength, feedrate) {
         goPoints.push("G1 X" + path[i].x.toFixed(5) + " Y" + path[i].y.toFixed(5) + feedrateString);
     }
 
-    code.push(goPoints[goPoints.length - 1]);
+    code.push(goPoints[0]);
     while(depthCut < depth) {
         depthCut = Math.min(depthCut + bitLength, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
@@ -73,12 +73,13 @@ function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
         vectorPath.push({ x : x, y : y });
     }
     numberIteration = biggestLength / (bitWidth * stepover); //XXX: not sure this is the way
-
     for(i = 0; i < vectorPath.length; i++) {
+        x = vectorPath[i].x;
+        y = vectorPath[i].y;
         deltaPath.push({ x : x / numberIteration, y : y / numberIteration });
     }
 
-    code.push("G1 " + path[path.length - 1].x.toFixed(5) + " Y" + path[path.length - 1].y.toFixed(5) + feedrateString);
+    code.push("G1 X" + path[path.length - 1].x.toFixed(5) + " Y" + path[path.length - 1].y.toFixed(5) + feedrateString);
     while(depthCut < depth) {
         depthCut = Math.min(depthCut + bitLength, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
@@ -87,9 +88,9 @@ function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
             for(i=0; i < path.length; i++) {
                 x = path[i].x + n * deltaPath[i].x;
                 y = path[i].y + n * deltaPath[i].y;
-                code.push("G1 " + x.toFixed(5) + " Y" + y.toFixed(5) + feedrateString);
+                code.push("G1 X" + x.toFixed(5) + " Y" + y.toFixed(5) + feedrateString);
             }
-            n = Math.max(n + 1, numberIteration);
+            n = Math.min(n + 1, numberIteration);
         }
     }
 
@@ -122,7 +123,7 @@ function cutCircle(center, depth, radius, bitLength, feedrate) {
 function pocketCircle(center, depth, radius, stepover, bitLength, bitWidth,
         feedrate) {
     //TODO: testing the arguments
-    if(bitWidth < radius * 2) {
+    if(bitWidth > radius * 2) {
         return false;
     }
 
