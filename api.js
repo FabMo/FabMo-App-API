@@ -4,8 +4,30 @@
  * Written by Alex Canales for ShopBotTools, Inc.
  */
 
+var api = {};
+
+/********************************* Math part **********************************/
 /**
- * This file defines functions for generating GCode.
+ * This part defines functions for math functionalities.
+ */
+
+api.math = {};
+
+api.math.createPoint = function(x, y, z) {
+    return {
+        x : (x === undefined) ? 0 : x,
+        y : (y === undefined) ? 0 : y,
+        z : (z === undefined) ? 0 : z
+    };
+};
+
+api.math.createVector = function (x, y, z) {
+    return api.math.createPoint(x, y, z);
+};
+
+/******************************** G-Code part *********************************/
+/**
+ * This part defines functions for generating GCode.
  * When a function has a problem, returns false else the GCode.
  */
 
@@ -16,7 +38,16 @@
 //The coordinates are absolute
 // End code:        code += "M5\nM2\nM30";
 
-function cutPath(path, depth, bitLength, feedrate) {
+api.gcode = {};
+
+api.gcode.createBit = function(length, width) {
+    return {
+        length : (length !== undefined) ? 0 : length,
+        width : (width !== undefined) ? 0 : width,
+    };
+};
+
+api.gcode.cutPath = function(path, depth, bit, feedrate) {
     //TODO: check parameters
     var depthCut = 0;  //Positive number
     var code = [];
@@ -30,7 +61,7 @@ function cutPath(path, depth, bitLength, feedrate) {
 
     code.push(goPoints[0]);
     while(depthCut < depth) {
-        depthCut = Math.min(depthCut + bitLength, depth);
+        depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
         //TODO: got path to path
         for(i=0; i < goPoints.length; i++) {
@@ -40,9 +71,9 @@ function cutPath(path, depth, bitLength, feedrate) {
 
     code.push("G1 Z3" + feedrateString);
     return code.join("\n");
-}
+};
 
-function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
+api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
     //TODO: test arguments
 
     //Find barycenter
@@ -72,7 +103,7 @@ function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
         biggestLength = Math.max(Math.sqrt(x * x + y * y), biggestLength);
         vectorPath.push({ x : x, y : y });
     }
-    numberIteration = biggestLength / (bitWidth * stepover); //XXX: not sure this is the way
+    numberIteration = biggestLength / (bit.width * stepover); //XXX: not sure this is the way
     for(i = 0; i < vectorPath.length; i++) {
         x = vectorPath[i].x;
         y = vectorPath[i].y;
@@ -81,7 +112,7 @@ function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
 
     code.push("G1 X" + path[path.length - 1].x.toFixed(5) + " Y" + path[path.length - 1].y.toFixed(5) + feedrateString);
     while(depthCut < depth) {
-        depthCut = Math.min(depthCut + bitLength, depth);
+        depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
         while(n < numberIteration)
         {
@@ -96,9 +127,9 @@ function pocketPolygon(path, depth, stepover, bitWidth, bitLength, feedrate) {
 
     code.push("G1 Z3" + feedrateString);
     return code.join("\n");
-}
+};
 
-function cutCircle(center, depth, radius, bitLength, feedrate) {
+api.gcode.cutCircle = function(center, depth, radius, bit, feedrate) {
     var depthCut = 0;  //Positive number
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
@@ -109,33 +140,32 @@ function cutCircle(center, depth, radius, bitLength, feedrate) {
 
     code.push("G1" + endPointString + feedrateString);
     while(depthCut < depth) {
-        depthCut = Math.min(depthCut + bitLength, depth);
+        depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
         code.push("G2" + endPointString  + " I " + (-radius).toFixed(5) + feedrateString);
     }
 
     code.push("G1 Z3" + feedrateString);
     return code.join("\n");
-}
+};
 
 //Assume coordinate absolute
 //Assume the bit is above the board. End with the bit above the board
-function pocketCircle(center, depth, radius, stepover, bitLength, bitWidth,
-        feedrate) {
+function pocketCircle(center, depth, radius, bit, feedrate, stepover) {
     //TODO: testing the arguments
-    if(bitWidth > radius * 2) {
+    if(bit.width > radius * 2) {
         return false;
     }
 
     var depthCut = 0;  //Positive number
-    var deltaMove = stepover * bitWidth;
+    var deltaMove = stepover * bit.width;
     var newX = 0;
     var deltaRadius = 0;
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
 
     while(depthCut < depth) {
-        depthCut = Math.min(depthCut + bitLength, depth);
+        depthCut = Math.min(depthCut + bit.length, depth);
         //From inside to outside
         code.push("G1 X" + center.x.toFixed(5) + " Y" + center.y.toFixed(5) + feedrateString);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
@@ -154,7 +184,7 @@ function pocketCircle(center, depth, radius, stepover, bitLength, bitWidth,
 //Rectangle can be rotated
 //Rectangle defines 4 points in order to make a rectangle (it will just follow
 // the order)
-function cutRectangle(rectangle, depth, bitLength, feedrate) {
+api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate) {
     //TODO: test arguments
     var depthCut = 0;  //Positive number
     var code = [];
@@ -167,7 +197,7 @@ function cutRectangle(rectangle, depth, bitLength, feedrate) {
 
     code.push(goPoint0);
     while(depthCut < depth) {
-        depthCut = Math.min(depthCut + bitLength, depth);
+        depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
         code.push(goPoint1);
         code.push(goPoint2);
@@ -177,34 +207,33 @@ function cutRectangle(rectangle, depth, bitLength, feedrate) {
 
     code.push("G1 Z3" + feedrateString);
     return code.join("\n");
-}
+};
 
-function pocketRectangle(rectangle, depth, stepover, bitWidth, bitLength, feedrate) {
-    //TODO: test arguments
-    return pocketPolygon(rectangle, depth, stepover, bitWidth, bitLength, feedrate);
-}
+api.gcode.pocketRectangle = function(rectangle, depth, bit, feedrate, stepover) {
+    return api.gcode.pocketPolygon(rectangle, depth, bit, feedrate, stepover);
+};
 
-function comment(message) {
+api.gcode.comment = function(message) {
     return "(" + message + ")";  //TODO: put \n?
-}
+};
 
-function inInches() {
+api.gcode.inInches = function() {
     return "G20";
-}
+};
 
-function inMilimeters() {
+api.gcode.inMilimeters = function() {
     return "G21";
-}
+};
 
-function spindleOn() {
+api.gcode.spindleOn = function() {
     return "M4";
-}
+};
 
-function spindleOff() {
+api.gcode.spindleOff = function() {
     return "M8";
-}
+};
 
-function jogTo(point) {
+api.gcode.jogTo = function(point) {
     var code = "G0";
     if(point.x !== undefined) {
         code += " X" + point.x.toFixed(5);
@@ -216,9 +245,9 @@ function jogTo(point) {
         code += " Z" + point.z.toFixed(5);
     }
     return code;
-}
+};
 
-function moveTo(point, feedrate) {
+api.gcode.moveTo = function(point, feedrate) {
     var code = "G1";
 
     if(feedrate === undefined) {
@@ -234,6 +263,7 @@ function moveTo(point, feedrate) {
     if(point.z !== undefined) {
         code += " Z" + point.z.toFixed(5);
     }
-    code += " F120" + point.z.toFixed(5);
+    code += " F" + feedrate.toFixed(5);
+
     return code;
-}
+};
