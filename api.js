@@ -13,6 +13,13 @@ var api = {};
 
 api.math = {};
 
+/**
+ * Creates a point.
+ * @param {number} Optional. The x position.
+ * @param {number} Optional. The y position.
+ * @param {number} Optional. The z position.
+ * @return {object} A point.
+ */
 api.math.createPoint = function(x, y, z) {
     return {
         x : (x === undefined) ? 0 : x,
@@ -21,6 +28,14 @@ api.math.createPoint = function(x, y, z) {
     };
 };
 
+//TODO: remove that?
+/**
+ * Creates a vector. This is equivalent to createPoint.
+ * @param {number} Optional. The x position.
+ * @param {number} Optional. The y position.
+ * @param {number} Optional. The z position.
+ * @return {object} A point.
+ */
 api.math.createVector = function (x, y, z) {
     return api.math.createPoint(x, y, z);
 };
@@ -31,7 +46,6 @@ api.math.createVector = function (x, y, z) {
  * When a function has a problem, returns false else the GCode.
  */
 
-//TODO: check consistency of arguments
 //TODO: functions for cutting through material and letting taps
 
 //We consider a three axis tool with Z as the height and depth
@@ -40,6 +54,12 @@ api.math.createVector = function (x, y, z) {
 
 api.gcode = {};
 
+/**
+ * Creates the bit properties.
+ * @param {number} Bit length in inches.
+ * @param {number} Bit width in inches.
+ * @return {object} The bit.
+ */
 api.gcode.createBit = function(length, width) {
     return {
         length : (length !== undefined) ? 0 : length,
@@ -47,6 +67,14 @@ api.gcode.createBit = function(length, width) {
     };
 };
 
+/**
+ * Generates G-Code for cutting the path.
+ * @param {array} The path points.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.cutPath = function(path, depth, bit, feedrate) {
     //TODO: check parameters
     var depthCut = 0;  //Positive number
@@ -63,7 +91,7 @@ api.gcode.cutPath = function(path, depth, bit, feedrate) {
     while(depthCut < depth) {
         depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
-        //TODO: got path to path
+        //TODO: put tabs
         for(i=0; i < goPoints.length; i++) {
             code.push(goPoints[i]);
         }
@@ -73,6 +101,17 @@ api.gcode.cutPath = function(path, depth, bit, feedrate) {
     return code.join("\n");
 };
 
+/**
+ * Generates G-Code for pocketting the polygon. The order of the polygon tips
+ * is important. The bit will go to a point to the next one and close the
+ * polygon by going from the last point to the first point.
+ * @param {array} The polygons tip points.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @param {number} The stepover in inches.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
     //TODO: test arguments
 
@@ -129,7 +168,16 @@ api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
     return code.join("\n");
 };
 
-api.gcode.cutCircle = function(center, depth, radius, bit, feedrate) {
+/**
+ * Generates G-Code for cutting a circle.
+ * @param {object} The center of the circle.
+ * @param {number} The radius in inches.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.cutCircle = function(center, radius, depth, bit, feedrate) {
     var depthCut = 0;  //Positive number
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
@@ -138,6 +186,7 @@ api.gcode.cutCircle = function(center, depth, radius, bit, feedrate) {
 
     //TODO: test arguments
 
+        //TODO: put tabs
     code.push("G1" + endPointString + feedrateString);
     while(depthCut < depth) {
         depthCut = Math.min(depthCut + bit.length, depth);
@@ -151,7 +200,17 @@ api.gcode.cutCircle = function(center, depth, radius, bit, feedrate) {
 
 //Assume coordinate absolute
 //Assume the bit is above the board. End with the bit above the board
-function pocketCircle(center, depth, radius, bit, feedrate, stepover) {
+/**
+ * Generates G-Code for pocketting a circle.
+ * @param {object} The center of the circle.
+ * @param {number} The radius in inches.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @param {number} The stepover in inches.
+ * @return {string} The generated G-Code.
+ */
+function pocketCircle(center, radius, depth, bit, feedrate, stepover) {
     //TODO: testing the arguments
     if(bit.width > radius * 2) {
         return false;
@@ -181,15 +240,24 @@ function pocketCircle(center, depth, radius, bit, feedrate, stepover) {
     return code.join("\n");
 }
 
-//Rectangle can be rotated
 //Rectangle defines 4 points in order to make a rectangle (it will just follow
 // the order)
+/**
+ * Generates G-Code for cutting a rectangle.
+ * @param {array} The rectangle points. Should be defined by four points.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate) {
     //TODO: test arguments
+    //TODO: put tabs
     var depthCut = 0;  //Positive number
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
 
+    // We do not use moveTo because need to have a Z undefined
     var goPoint0 = "G1 X" + rectangle[0].x.toFixed(5) + " Y" + rectangle[0].y.toFixed(5) + feedrateString;
     var goPoint1 = "G1 X" + rectangle[1].x.toFixed(5) + " Y" + rectangle[1].y.toFixed(5) + feedrateString;
     var goPoint2 = "G1 X" + rectangle[2].x.toFixed(5) + " Y" + rectangle[2].y.toFixed(5) + feedrateString;
@@ -209,30 +277,69 @@ api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate) {
     return code.join("\n");
 };
 
+/**
+ * Generates G-Code for pocketting a rectangle.
+ * @param {array} The rectangle points. Should be defined by four points.
+ * @param {number} The depth in inches.
+ * @param {object} The bit properties.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.pocketRectangle = function(rectangle, depth, bit, feedrate, stepover) {
     return api.gcode.pocketPolygon(rectangle, depth, bit, feedrate, stepover);
 };
 
+/**
+ * Generates G-Code for letting a comment in the code.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.comment = function(message) {
-    return "(" + message + ")";  //TODO: put \n?
+    return "(" + message + ")\n";  // Put \n in case people put G-Code afer that
 };
 
+/**
+ * Generates G-Code for setting the values in the code in inches. Does not
+ * change the fast that the values uses by the function in this API are in
+ * inches.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.inInches = function() {
     return "G20";
 };
 
-api.gcode.inMilimeters = function() {
+/**
+ * Generates G-Code for setting the values in the code in millimeters. Does not
+ * change the fast that the values uses by the function in this API are in
+ * inches.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.inMillimeters = function() {
     return "G21";
 };
 
+/**
+ * Generates G-Code for turning on the spindle.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.spindleOn = function() {
     return "M4";
 };
 
+/**
+ * Generates G-Code for turning off the spindle.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.spindleOff = function() {
     return "M8";
 };
 
+/**
+ * Generates G-Code for moving as fast as possible the bit to the point. Never
+ * use this function for cutting through material.
+ * @param {object} The point to reach.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.jogTo = function(point) {
     var code = "G0";
     if(point.x !== undefined) {
@@ -247,6 +354,13 @@ api.gcode.jogTo = function(point) {
     return code;
 };
 
+/**
+ * Generates G-Code for moving the bit to the point. This is the function to
+ * use when cutting through material.
+ * @param {object} The point to reach.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.moveTo = function(point, feedrate) {
     var code = "G1";
 
