@@ -47,10 +47,23 @@ api.math.createVector = function (x, y, z) {
  */
 
 //TODO: functions for cutting through material and letting taps
+//TODO: verify that for pocketting, it starts from the center to the border
+//      (else dangerous if cutting completely trough material because no tab)
 
 //We consider a three axis tool with Z as the height and depth
 //The coordinates are absolute
 // End code:        code += "M5\nM2\nM30";
+
+// chemin
+// depth
+// bitProperties:
+//     length
+//     width
+// feedrate
+// stepover
+// tabsProperties:
+//     height or depth from the board surface to the top of the tab
+// Don't forget tabs for circle also
 
 api.gcode = {};
 
@@ -73,9 +86,10 @@ api.gcode.createBit = function(length, width) {
  * @param {number} The depth in inches.
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.cutPath = function(path, depth, bit, feedrate) {
+api.gcode.cutPath = function(path, depth, bit, feedrate, safeZ) {
     //TODO: check parameters
     var depthCut = 0;  //Positive number
     var code = [];
@@ -97,7 +111,10 @@ api.gcode.cutPath = function(path, depth, bit, feedrate) {
         }
     }
 
-    code.push("G1 Z3" + feedrateString);
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
     return code.join("\n");
 };
 
@@ -110,9 +127,10 @@ api.gcode.cutPath = function(path, depth, bit, feedrate) {
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
  * @param {number} The stepover in inches.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
+api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover, safeZ) {
     //TODO: test arguments
 
     //Find barycenter
@@ -164,7 +182,10 @@ api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
         }
     }
 
-    code.push("G1 Z3" + feedrateString);
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
     return code.join("\n");
 };
 
@@ -175,9 +196,10 @@ api.gcode.pocketPolygon = function(path, depth, bit, feedrate, stepover) {
  * @param {number} The depth in inches.
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.cutCircle = function(center, radius, depth, bit, feedrate) {
+api.gcode.cutCircle = function(center, radius, depth, bit, feedrate, safeZ) {
     var depthCut = 0;  //Positive number
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
@@ -194,7 +216,10 @@ api.gcode.cutCircle = function(center, radius, depth, bit, feedrate) {
         code.push("G2" + endPointString  + " I " + (-radius).toFixed(5) + feedrateString);
     }
 
-    code.push("G1 Z3" + feedrateString);
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
     return code.join("\n");
 };
 
@@ -208,9 +233,10 @@ api.gcode.cutCircle = function(center, radius, depth, bit, feedrate) {
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
  * @param {number} The stepover in inches.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-function pocketCircle(center, radius, depth, bit, feedrate, stepover) {
+function pocketCircle(center, radius, depth, bit, feedrate, stepover, safeZ) {
     //TODO: testing the arguments
     if(bit.width > radius * 2) {
         return false;
@@ -236,7 +262,10 @@ function pocketCircle(center, radius, depth, bit, feedrate, stepover) {
         }
     }
 
-    code.push("G1 Z3" + feedrateString);
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
     return code.join("\n");
 }
 
@@ -248,32 +277,39 @@ function pocketCircle(center, radius, depth, bit, feedrate, stepover) {
  * @param {number} The depth in inches.
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate) {
+api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate, safeZ) {
     //TODO: test arguments
     //TODO: put tabs
+    // No use cutPath for the sake of path optimization
     var depthCut = 0;  //Positive number
     var code = [];
     var feedrateString = " F" + feedrate.toFixed(5);
+    var goPoint = [];
+    var i = 0;
+    var r;
 
     // We do not use moveTo because need to have a Z undefined
-    var goPoint0 = "G1 X" + rectangle[0].x.toFixed(5) + " Y" + rectangle[0].y.toFixed(5) + feedrateString;
-    var goPoint1 = "G1 X" + rectangle[1].x.toFixed(5) + " Y" + rectangle[1].y.toFixed(5) + feedrateString;
-    var goPoint2 = "G1 X" + rectangle[2].x.toFixed(5) + " Y" + rectangle[2].y.toFixed(5) + feedrateString;
-    var goPoint3 = "G1 X" + rectangle[3].x.toFixed(5) + " Y" + rectangle[3].y.toFixed(5) + feedrateString;
+    for(i = 0; i < 4; i++) {
+        r = rectangle[i];
+        goPoint.push("G1 X" + r.x.toFixed(5) + " Y" + r.y.toFixed(5) + feedrateString);
+    }
 
-    code.push(goPoint0);
+    code.push(goPoint[0]);
     while(depthCut < depth) {
         depthCut = Math.min(depthCut + bit.length, depth);
         code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
-        code.push(goPoint1);
-        code.push(goPoint2);
-        code.push(goPoint3);
-        code.push(goPoint0);
+        for(i = 0; i < 4; i++) {
+            code.push(goPoint[i]);
+        }
     }
 
-    code.push("G1 Z3" + feedrateString);
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
     return code.join("\n");
 };
 
@@ -283,10 +319,11 @@ api.gcode.cutRectangle = function(rectangle, depth, bit, feedrate) {
  * @param {number} The depth in inches.
  * @param {object} The bit properties.
  * @param {number} The feed rate in inches per minutes.
+ * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.pocketRectangle = function(rectangle, depth, bit, feedrate, stepover) {
-    return api.gcode.pocketPolygon(rectangle, depth, bit, feedrate, stepover);
+api.gcode.pocketRectangle = function(rectangle, depth, bit, feedrate, stepover, safeZ) {
+    return api.gcode.pocketPolygon(rectangle, depth, bit, feedrate, stepover, safeZ);
 };
 
 /**
