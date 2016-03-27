@@ -2,9 +2,10 @@
 
 Libraries for helping FabMo app developpers
 
-This API is very unstable for the moment and the development is nonregular.
+**This API is very unstable for the moment and the development is nonregular.**
 
 This API tends to follow those rules:
+
 1. JavaScript will is used as a procedural language. Therefore, no classes are
    created
 2. This API is modular.
