@@ -76,13 +76,13 @@ api.gcode = {};
 //TODO: find a better name than "cutProperties"
 /**
  * Creates the cut properties.
- * @param {number} Bit length in inches.
  * @param {number} Bit width in inches.
+ * @param {number} Bit length in inches.
  * @param {number} The stepover ratio.
  * @param {number} The feed rate in inches per minutes.
  * @return {object} The cut properties.
  */
-api.gcode.createCutProperties = function(bitLength, bitWidth, stepover, feedrate) {
+api.gcode.createCutProperties = function(bitWidth, bitLength, stepover, feedrate) {
     return {
         bitLength : (bitLength === undefined) ? 0 : bitLength,
         bitWidth : (bitWidth === undefined) ? 0 : bitWidth,
@@ -100,6 +100,10 @@ api.gcode.createTabProperties = function(width, height) {
 
 //TODO: change function name
 api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) {
+    console.log("startPoint");
+    console.log(startPoint);
+    console.log("endPoint");
+    console.log(endPoint);
     //We are not using the Z value:
     var startPoint2D = api.math.createPoint(startPoint.x, startPoint.y, 0);
     var endPoint2D = api.math.createPoint(endPoint.x, endPoint.y, 0);
@@ -133,35 +137,80 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
 };
 
 /**
- * Generates G-Code for cutting the path.
+ * Generates G-Code for moving as fast as possible the bit to the point. Never
+ * use this function for cutting through material.
+ * @param {object} The point to reach.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.jogTo = function(point) {
+    var code = "G0";
+    if(point.x !== undefined) {
+        code += " X" + point.x.toFixed(5);
+    }
+    if(point.y !== undefined) {
+        code += " Y" + point.y.toFixed(5);
+    }
+    if(point.z !== undefined) {
+        code += " Z" + point.z.toFixed(5);
+    }
+    return code;
+};
+
+/**
+ * Generates G-Code for moving the bit to the point. This is the function to
+ * use when cutting through material.
+ * @param {object} The point to reach.
+ * @param {number} The feed rate in inches per minutes.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.moveTo = function(point, feedrate) {
+    var code = "G1";
+
+    if(feedrate === undefined) {
+        return false;
+    }
+
+    if(point.x !== undefined) {
+        code += " X" + point.x.toFixed(5);
+    }
+    if(point.y !== undefined) {
+        code += " Y" + point.y.toFixed(5);
+    }
+    if(point.z !== undefined) {
+        code += " Z" + point.z.toFixed(5);
+    }
+    code += " F" + feedrate.toFixed(5);
+
+    return code;
+};
+
+/**
+ * Generates G-Code for cutting the path. The bit will simply go from a point
+ * to another. This function is used to have better performance than using
+ * consecutively the moveTo function.
  * @param {array} The path points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
+ * @param {number} The feed rate in inches per minutes.
  * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.cutPath = function(path, depth, cutProperties, safeZ) {
-    //TODO: check parameters
-    var finalZ = -depth;
-    var currentZ = 0;
+api.gcode.cutPath = function(path, feedrate, safeZ) {
+    if(path.length === 0) {
+        return "";
+    }
+
     var code = [];
     var i = 0;
-    var goPoints = [];
-    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
+    var feedrateString = " F" + feedrate.toFixed(5);
 
     for(i=0; i < path.length; i++) {
-        goPoints.push("G1 X" + path[i].x.toFixed(5) +
-                " Y" + path[i].y.toFixed(5) + feedrateString);
+        code.push(
+            "G1 X" + path[i].x.toFixed(5) +
+            " Y" + path[i].y.toFixed(5) +
+            " Z" + path[i].z.toFixed(5) +
+            feedrateString
+        );
     }
 
-    code.push(goPoints[0]);
-    while(currentZ > finalZ) {
-        currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
-        code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
-        for(i=0; i < goPoints.length; i++) {
-            code.push(goPoints[i]);
-        }
-    }
 
     if(safeZ !== undefined) {
         code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
@@ -170,108 +219,118 @@ api.gcode.cutPath = function(path, depth, cutProperties, safeZ) {
     return code.join("\n");
 };
 
-//TODO: make clear that the path is considered 2D on XY plane
-api.gcode.cutPolygonWithTabs = function(path, depth, cutProperties, tabProperties, safeZ) {
-    //TODO: change all
-    //TODO: check parameters
+/**
+ * Generates G-Code for cutting the polygon and letting tabs. The order of the
+ * polygon tips is important. The bit will go to a point to the next one and
+ * close the polygon by going from the last point to the first point. The
+ * polygon is considered 2D on the XY plane. Use this function if you cut
+ * completely through the material.
+ * @param {array} The polygon tip points.
+ * @param {number} The depth in inches.
+ * @param {object} The cut properties.
+ * @param {object} The tabs properties.
+ * @param {number} (Optional) The safe Z position to go after the cut in inches.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProperties, safeZ) {
+    if(polygon.length === 0) {
+        return "";
+    }
+
+    var completePolygon = polygon.slice();
+    completePolygon.push(completePolygon[0]);
+    var pathsWithTabs = [];
+    var straightWithTabs = [];
+    var point;
+    var path = polygon.slice();
     var finalZ = -depth;
     var currentZ = 0;
     var tabZ = tabProperties.height - depth;
-    var code = [];
-    var i = 0, j = 0;
-    var goPoints = [];
-    var previousPoint;
-    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
+    var i = 0;
     var useTabs = (tabProperties.height !== 0);
 
-    var goNormalPoints = [];
-    var goTabPaths = [];
-    var tabsPath = [];
-    var tabCodeSimplePath = [];
-
-    //Creating the GCode for the 2D path
-    for(i=0; i < path.length; i++) {
-        goNormalPoints.push("G1 X" + path[i].x.toFixed(5) +
-                " Y" + path[i].y.toFixed(5) + feedrateString);
-
-        if(useTabs === true) {
-            if(previousPoint !== undefined) {
-                tabsPath = api.gcode.pointsAccordingToTabs(previousPoint,
-                        path[i], tabProperties);
-                tabCodeSimplePath = [];
-                for(j=0; j < tabsPath.length; j++) {
-                    tabCodeSimplePath.push("G1 X" + tabsPath[j].x.toFixed(5) +
-                            " Y" + tabsPath[j].y.toFixed(5) + feedrateString);
-                }
-                goTabPaths.push(tabCodeSimplePath);
-            }
-
-            previousPoint = path[i];
+    if(useTabs === true) {
+        for(i=0; i < completePolygon.length - 1; i++) {
+            straightWithTabs = api.gcode.pointsAccordingToTabs(
+                    completePolygon[i],
+                    completePolygon[i+1],
+                    tabProperties
+            );
+            pathsWithTabs.push(straightWithTabs);
         }
     }
 
-    //Closing the loop
-    goNormalPoints.push("G1 X" + path[0].x.toFixed(5) +
-            " Y" + path[0].y.toFixed(5) + feedrateString);
-    if(useTabs === true && previousPoint !== undefined) {
-        tabsPath = api.gcode.pointsAccordingToTabs(previousPoint,
-                path[i], tabProperties);
-        tabCodeSimplePath = [];
-        for(j=0; j < tabsPath.length; j++) {
-            tabCodeSimplePath.push("G1 X" + tabsPath[j].x.toFixed(5) +
-                    " Y" + tabsPath[j].y.toFixed(5) + feedrateString);
-        }
-        goTabPaths.push(tabCodeSimplePath);
-    }
+    point = completePolygon[0];
+    path.push(api.math.createPoint(point.x, point.y, 0));
 
-
-    code.push(goNormalPoints[0]);
+    currentZ = 0;
+    finalZ = -depth;
     while(currentZ > finalZ) {
         currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
-        code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
 
         if(useTabs === true && currentZ < tabZ) {
-            if(goTabPaths.length > 0 && goTabPaths[0].length > 0) {
-                code.push(goTabPaths[i][0]);
+            if(pathsWithTabs.length > 0 && pathsWithTabs[0].length > 0) {
+                point = pathsWithTabs[0][0];
+                path.push(api.math.createPoint(point.x, point.y, currentZ));
             }
-            // Not pushing first one to avoid duplicate G-Code
-            for(i=0; i < goTabPaths.length-1; i++) {
+            for(i=0; i < pathsWithTabs.length; i++) {
+                // Not pushing first one to avoid duplicate G-Code
+                point = pathsWithTabs[i][1];
+                path.push(api.math.createPoint(point.x, point.y, currentZ));
+
                 // Here a path length is equal to 2 (no tabs) or 4 (with tabs)
-                if(goTabPaths[i].length === 4) {
-                    code.push(goTabPaths[i][1]);
-                    code.push("G1 Z" + tabZ.toFixed(5) + feedrateString);
-                    code.push(goTabPaths[i][2]);
-                    code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
+                if(pathsWithTabs[i].length === 4) {
+                    path.push(api.math.createPoint(point.x, point.y, tabZ));
+
+                    point = pathsWithTabs[i][2];
+                    path.push(api.math.createPoint(point.x, point.y, tabZ));
+                    path.push(api.math.createPoint(point.x, point.y, currentZ));
+
+                    point = pathsWithTabs[i][3];
+                    path.push(api.math.createPoint(point.x, point.y, currentZ));
                 }
-                code.push(goTabPaths[i][goTabPaths[i].length - 1]);
             }
         } else {
-            for(i=0; i < goPoints.length; i++) {
-                code.push(goPoints[i]);
+            for(i=0; i < completePolygon.length; i++) {
+                point = completePolygon[i];
+                path.push(api.math.createPoint(point.x, point.y, currentZ));
             }
         }
     }
 
-    if(safeZ !== undefined) {
-        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
-    }
-
-    return code.join("\n");
+    return api.gcode.cutPath(path, cutProperties.feedrate, safeZ);
 };
 
-api.gcode.cutPolygon = function(path, depth, cutProperties, safeZ) {
-    var tab = api.gcode.createTabProperties(0, 0);
-    api.gcode.cutPolygonWithTabs(path, depth, cutProperties, tab, safeZ);
+/**
+ * Generates G-Code for cutting the polygon. The order of the polygon tips
+ * is important. The bit will go to a point to the next one and close the
+ * polygon by going from the last point to the first point. The polygon is
+ * considered 2D on the XY plane. Do not use this function if you cut completely
+ * through the material: you need tabs for that. Without tabs, the cutting part
+ * can be thrown because of the spindle rotation.
+ * @param {array} The polygon tip points.
+ * @param {number} The depth in inches.
+ * @param {object} The cut properties.
+ * @param {number} (Optional) The safe Z position to go after the cut in inches.
+ * @return {string} The generated G-Code.
+ */
+api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
+    if(polygon.length === 0) {
+        return "";
+    }
+
+    var t = api.gcode.createTabProperties(0, 0);
+    return api.gcode.cutPolygonWithTabs(polygon, depth, cutProperties, t, safeZ);
 };
 
 /**
  * Generates G-Code for pocketting the polygon. The order of the polygon tips
  * is important. The bit will go to a point to the next one and close the
- * polygon by going from the last point to the first point.
- * @param {array} The polygons tip points.
+ * polygon by going from the last point to the first point. The polygon is
+ * considered 2D on the XY plane.
+ * @param {array} The polygon tip points.
  * @param {number} The depth in inches.
  * @param {object} The cut properties.
- * @param {number} The stepover in inches.
  * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
@@ -335,7 +394,8 @@ api.gcode.pocketPolygon = function(path, depth, cutProperties, safeZ) {
 };
 
 api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tabHeight, safeZ) {
-    //TODO
+    //Printing to avoid jslint arguing about unused parameters
+    console.log(center + radius + depth + cutProperties + tabHeight + safeZ);
 };
 
 /**
@@ -416,53 +476,6 @@ function pocketCircle(center, radius, depth, cutProperties, safeZ) {
     return code.join("\n");
 }
 
-api.gcode.cutRectangleWithTabs = function(rectangle, depth, cutProperties, tabHeight, safeZ) {
-    //TODO
-};
-
-//Rectangle defines 4 points in order to make a rectangle (it will just follow
-// the order)
-/**
- * Generates G-Code for cutting a rectangle.
- * @param {array} The rectangle points. Should be defined by four points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut.
- * @return {string} The generated G-Code.
- */
-api.gcode.cutRectangle = function(rectangle, depth, cutProperties, safeZ) {
-    //TODO: test arguments
-    //TODO: put tabs
-    // No use cutPath for the sake of path optimization
-    var depthCut = 0;  //Positive number
-    var code = [];
-    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
-    var goPoint = [];
-    var i = 0;
-    var r;
-
-    // We do not use moveTo because need to have a Z undefined
-    for(i = 0; i < 4; i++) {
-        r = rectangle[i];
-        goPoint.push("G1 X" + r.x.toFixed(5) + " Y" + r.y.toFixed(5) + feedrateString);
-    }
-
-    code.push(goPoint[0]);
-    while(depthCut < depth) {
-        depthCut = Math.min(depthCut + cutProperties.bitLength, depth);
-        code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
-        for(i = 0; i < 4; i++) {
-            code.push(goPoint[i]);
-        }
-    }
-
-    if(safeZ !== undefined) {
-        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
-    }
-
-    return code.join("\n");
-};
-
 /**
  * Generates G-Code for pocketting a rectangle.
  * @param {array} The rectangle points. Should be defined by four points.
@@ -517,52 +530,4 @@ api.gcode.spindleOn = function() {
  */
 api.gcode.spindleOff = function() {
     return "M8";
-};
-
-/**
- * Generates G-Code for moving as fast as possible the bit to the point. Never
- * use this function for cutting through material.
- * @param {object} The point to reach.
- * @return {string} The generated G-Code.
- */
-api.gcode.jogTo = function(point) {
-    var code = "G0";
-    if(point.x !== undefined) {
-        code += " X" + point.x.toFixed(5);
-    }
-    if(point.y !== undefined) {
-        code += " Y" + point.y.toFixed(5);
-    }
-    if(point.z !== undefined) {
-        code += " Z" + point.z.toFixed(5);
-    }
-    return code;
-};
-
-/**
- * Generates G-Code for moving the bit to the point. This is the function to
- * use when cutting through material.
- * @param {object} The point to reach.
- * @param {number} The feed rate in inches per minutes.
- * @return {string} The generated G-Code.
- */
-api.gcode.moveTo = function(point, feedrate) {
-    var code = "G1";
-
-    if(feedrate === undefined) {
-        return false;
-    }
-
-    if(point.x !== undefined) {
-        code += " X" + point.x.toFixed(5);
-    }
-    if(point.y !== undefined) {
-        code += " Y" + point.y.toFixed(5);
-    }
-    if(point.z !== undefined) {
-        code += " Z" + point.z.toFixed(5);
-    }
-    code += " F" + feedrate.toFixed(5);
-
-    return code;
 };
