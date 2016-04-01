@@ -242,7 +242,7 @@ api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProper
     var pathsWithTabs = [];
     var straightWithTabs = [];
     var point;
-    var path = polygon.slice();
+    var path = [];
     var finalZ = -depth;
     var currentZ = 0;
     var tabZ = tabProperties.height - depth;
