@@ -57,6 +57,19 @@ api.math.vectorNormal = function(vector) {
     return api.math.createVector(vector.x / length, vector.y / length, vector.z / length);
 };
 
+// angle in degree
+api.math.rotation2D = function(point, center, angle, scale) {
+    // newPoint = scale * point * exp(i angle) + center
+    var angleRad = angle * Math.PI / 180;
+    var cosAngle = Math.cos(angleRad);
+    var sinAngle = Math.sin(angleRad);
+    var vector = api.math.createVector(point.x - center.x, point.y - center.y, 0);
+    var newPoint = api.math.createPoint(center.x, center.y, 0);
+    newPoint.x += scale * (vector.x * cosAngle - vector.y * sinAngle);
+    newPoint.y += scale * (vector.x * sinAngle + vector.y * cosAngle);
+    return newPoint;
+};
+
 /******************************** G-Code part *********************************/
 /**
  * This part defines functions for generating GCode.
@@ -100,10 +113,6 @@ api.gcode.createTabProperties = function(width, height) {
 
 //TODO: change function name
 api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) {
-    console.log("startPoint");
-    console.log(startPoint);
-    console.log("endPoint");
-    console.log(endPoint);
     //We are not using the Z value:
     var startPoint2D = api.math.createPoint(startPoint.x, startPoint.y, 0);
     var endPoint2D = api.math.createPoint(endPoint.x, endPoint.y, 0);
@@ -393,9 +402,88 @@ api.gcode.pocketPolygon = function(path, depth, cutProperties, safeZ) {
     return code.join("\n");
 };
 
-api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tabHeight, safeZ) {
-    //Printing to avoid jslint arguing about unused parameters
-    console.log(center + radius + depth + cutProperties + tabHeight + safeZ);
+api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tabProperties, safeZ) {
+    if(radius === 0) {
+        return false;
+    }
+
+    var startPoint = api.math.createPoint(center.x + radius, center.y, 0);
+    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
+    var useTabs = (tabProperties.height !== 0 && tabProperties.width !== 0);
+    var codeTabs = [];
+    var code = [];
+    var maxTabAngle = 45;  //TODO: put this somewhere else
+    var str = "";
+    var tabAngle = 0;
+    var normalAngle = 0;
+    var endPoint;
+    var finalZ = -depth;
+    var currentZ = 0;
+    var tabZ = tabProperties.height - depth;
+
+    var codeWithoutTab = "G3 X" + startPoint.x.toFixed(5);
+    codeWithoutTab += " Y" +startPoint.y.toFixed(5);
+    codeWithoutTab += " I" + (-radius).toFixed(5) + feedrateString;
+
+    if(useTabs === true) {
+        //perimeter = 2*pi*r; ratio = tabWidth / perimeter; tabAngle = 360 * ratio;
+        tabAngle = (180 * tabProperties.width) / (Math.PI * radius);
+        if(tabAngle >= maxTabAngle) {
+            console.log("Tab angle = " + tabAngle);
+            useTabs = false;
+        } else {
+            normalAngle = 180 - tabAngle;
+
+            endPoint = api.math.rotation2D(startPoint, center, normalAngle, 1);
+            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            str += " R" + radius.toFixed(5) + feedrateString;
+            codeTabs.push(str);
+
+            endPoint = api.math.rotation2D(endPoint, center, tabAngle, 1);
+            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            str += " R" + radius.toFixed(5) + feedrateString;
+            codeTabs.push(str);
+
+            endPoint = api.math.rotation2D(endPoint, center, normalAngle, 1);
+            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            str += " R" + radius.toFixed(5) + feedrateString;
+            codeTabs.push(str);
+
+            //To make sure we close the circle, we go to startPoint:
+            str = "G3 X" + startPoint.x.toFixed(5) + " Y" + startPoint.y.toFixed(5);
+            str += " R" + radius.toFixed(5) + feedrateString;
+            codeTabs.push(str);
+        }
+    }
+
+    str = "G1 X" + startPoint.x.toFixed(5) + " Y" + startPoint.y.toFixed(5);
+    str += feedrateString;
+    code.push(str);
+
+    finalZ = -depth;
+    currentZ = 0;
+    while(currentZ > finalZ) {
+        currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
+        code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
+
+        if(useTabs === true && currentZ < tabZ) {
+            code.push(codeTabs[0]);
+            code.push("G1 Z" + tabZ.toFixed(5) + feedrateString);
+            code.push(codeTabs[1]);
+            code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
+            code.push(codeTabs[2]);
+            code.push("G1 Z" + tabZ.toFixed(5) + feedrateString);
+            code.push(codeTabs[3]);
+        } else {
+            code.push(codeWithoutTab);
+        }
+    }
+
+    if(safeZ !== undefined) {
+        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    }
+
+    return code.join("\n");
 };
 
 /**
@@ -408,27 +496,8 @@ api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tab
  * @return {string} The generated G-Code.
  */
 api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
-    var depthCut = 0;  //Positive number
-    var code = [];
-    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
-    var endPointString = " X" + (center.x + radius).toFixed(5);
-    endPointString += " Y" + center.y.toFixed(5);
-
-    //TODO: test arguments
-
-        //TODO: put tabs
-    code.push("G1" + endPointString + feedrateString);
-    while(depthCut < depth) {
-        depthCut = Math.min(depthCut + cutProperties.bitLength, depth);
-        code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
-        code.push("G2" + endPointString  + " I " + (-radius).toFixed(5) + feedrateString);
-    }
-
-    if(safeZ !== undefined) {
-        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
-    }
-
-    return code.join("\n");
+    var t = api.gcode.createTabProperties(0, 0);
+    return api.gcode.cutCircleWithTabs(center, radius, depth, cutProperties, t, safeZ);
 };
 
 //Assume coordinate absolute
@@ -475,18 +544,6 @@ function pocketCircle(center, radius, depth, cutProperties, safeZ) {
 
     return code.join("\n");
 }
-
-/**
- * Generates G-Code for pocketting a rectangle.
- * @param {array} The rectangle points. Should be defined by four points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut.
- * @return {string} The generated G-Code.
- */
-api.gcode.pocketRectangle = function(rectangle, depth, cutProperties, safeZ) {
-    return api.gcode.pocketPolygon(rectangle, depth, cutProperties, safeZ);
-};
 
 /**
  * Generates G-Code for letting a comment in the code.
