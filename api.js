@@ -402,6 +402,17 @@ api.gcode.pocketPolygon = function(path, depth, cutProperties, safeZ) {
     return code.join("\n");
 };
 
+/**
+ * Generates G-Code for cutting the circle and letting tabs. The circle is
+ * considered 2D on the XY plane. Use this function if you cut completely
+ * through the material.
+ * @param {array} The polygon tip points.
+ * @param {number} The depth in inches.
+ * @param {object} The cut properties.
+ * @param {object} The tabs properties.
+ * @param {number} (Optional) The safe Z position to go after the cut in inches.
+ * @return {string} The generated G-Code.
+ */
 api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tabProperties, safeZ) {
     if(radius === 0) {
         return false;
@@ -487,7 +498,10 @@ api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tab
 };
 
 /**
- * Generates G-Code for cutting a circle.
+ * Generates G-Code for cutting a circle. The circle is
+ * considered 2D on the XY plane. Do not use this function if you cut completely
+ * through the material: you need tabs for that. Without tabs, the cutting part
+ * can be thrown because of the spindle rotation.
  * @param {object} The center of the circle.
  * @param {number} The radius in inches.
  * @param {number} The depth in inches.
@@ -513,23 +527,23 @@ api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
  * @return {string} The generated G-Code.
  */
 function pocketCircle(center, radius, depth, cutProperties, safeZ) {
-    //TODO: testing the arguments
     if(cutProperties.bitWidth > radius * 2) {
         return false;
     }
 
-    var depthCut = 0;  //Positive number
     var deltaMove = cutProperties.stepover * cutProperties.bitWidth;
     var newX = 0;
     var deltaRadius = 0;
     var code = [];
     var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
+    var currentZ = 0;
+    var finalZ = -depth;
 
-    while(depthCut < depth) {
-        depthCut = Math.min(depthCut + cutProperties.bitLength, depth);
+    while(currentZ > finalZ) {
+        currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
         //From inside to outside
         code.push("G1 X" + center.x.toFixed(5) + " Y" + center.y.toFixed(5) + feedrateString);
-        code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
+        code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
         while(deltaRadius < radius) {
             deltaRadius = Math.min(deltaRadius + deltaMove, radius);
             newX = center.x + deltaRadius;
