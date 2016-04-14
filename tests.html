@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test API</title>
+</head>
+<body>
+    Testing API.
+    <script src="api.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        function printCode(name, code) {
+            console.log("The code \"" + name + "\" is: ");
+            console.log(code);
+            console.log();
+        }
+
+        function printPath(name, path) {
+            var pathStr = "";
+            console.log("The path \"" + name + "\" is defined by:");
+            for(var i=0; i < path.length; i++) {
+                pathStr += "(" + path[i].x + "; " + path[i].y + "; " + path[i].z + ")\n";
+            }
+            console.log(pathStr);
+        }
+
+        var bitWidth = 0.3;
+        var bitLength = 0.4;
+        var stepover = 0.3;
+        var feedrate = 120;
+        var cutProperties = api.gcode.createCutProperties(bitWidth, bitLength, stepover, feedrate);
+        var safeZ = 3;
+        var depth = 2;
+
+        var tabProperties = api.gcode.createTabProperties(1, 0.5);
+
+        //Definition of a polygon with an angle superior to 180 degree
+        var polygon180 = [];
+        polygon180.push(api.math.createPoint(-1, -2, 3));
+        polygon180.push(api.math.createPoint(0, -3, 1));
+        polygon180.push(api.math.createPoint(3, -3, 0));
+        polygon180.push(api.math.createPoint(0, -2, 3));
+        polygon180.push(api.math.createPoint(4, 1, 0));
+        polygon180.push(api.math.createPoint(0, 3, 2));
+        polygon180.push(api.math.createPoint(-1, 2, 2));
+        printPath("polygon180", polygon180);
+
+        var codeCutPath180 = api.gcode.cutPath(polygon180, feedrate, safeZ);
+        printCode("codeCutPath180", codeCutPath180);
+
+        var codeCutPolygon180 = api.gcode.cutPolygon(polygon180, depth, cutProperties, safeZ);
+        printCode("codeCutPolygon180", codeCutPolygon180);
+
+        var codeCutPolygonWithTabs180 = api.gcode.cutPolygonWithTabs(polygon180, depth, cutProperties, tabProperties, safeZ);
+        printCode("codeCutPolygonWithTabs180", codeCutPolygonWithTabs180);
+
+        var codePocketPolygon180 = api.gcode.pocketPolygon(polygon180, depth, cutProperties, safeZ);
+        printCode("codePocketPolygon180", codePocketPolygon180);
+
+        //Definition or a polygon without angle superior to 180 degree
+        var polygonRegular = [];
+        polygonRegular.push(api.math.createPoint(0, 0, 0));
+        polygonRegular.push(api.math.createPoint(1, 0, 0));
+        polygonRegular.push(api.math.createPoint(2, 1, 0));
+        polygonRegular.push(api.math.createPoint(2, 3, 0));
+        polygonRegular.push(api.math.createPoint(1, 4, 0));
+        polygonRegular.push(api.math.createPoint(-1, 4, 0));
+        polygonRegular.push(api.math.createPoint(-2, 3, 0));
+        polygonRegular.push(api.math.createPoint(-2, 1, 0));
+        printPath("polygonRegular", polygonRegular);
+
+        var codeCutPathRegular = api.gcode.cutPath(polygonRegular, feedrate, safeZ);
+        printCode("codeCutPathRegular", codeCutPathRegular);
+
+        var codeCutPolygonRegular = api.gcode.cutPolygon(polygonRegular, depth, cutProperties, safeZ);
+        printCode("codeCutPolygonRegular", codeCutPolygonRegular);
+
+        var codeCutPolygonWithTabsRegular = api.gcode.cutPolygonWithTabs(polygonRegular, depth, cutProperties, tabProperties, safeZ);
+        printCode("codeCutPolygonWithTabsRegular", codeCutPolygonWithTabsRegular);
+
+        var codePocketPolygonRegular = api.gcode.pocketPolygon(polygonRegular, depth, cutProperties, safeZ);
+        printCode("codePocketPolygonRegular", codePocketPolygonRegular);
+
+        var codePocketPolygonRegularConvex = api.gcode.pocketConvexPolygon(polygonRegular, depth, cutProperties, safeZ);
+        printCode("codePocketPolygonRegularConvex", codePocketPolygonRegularConvex);
+
+        var convexPolygon = [];
+        convexPolygon.push(api.math.createPoint(1, 1, 0));
+        convexPolygon.push(api.math.createPoint(1, 2, 0));
+        convexPolygon.push(api.math.createPoint(2, 2, 0));
+        convexPolygon.push(api.math.createPoint(2, 1, 0));
+        printPath("convexPolygon", convexPolygon);
+
+        var codeCutPathConvex = api.gcode.cutPath(convexPolygon, feedrate, safeZ);
+        printCode("codeCutPathConvex", codeCutPathConvex);
+
+        var codeCutPolygonConvex = api.gcode.cutPolygon(convexPolygon, depth, cutProperties, safeZ);
+        printCode("codeCutPolygonConvex", codeCutPolygonConvex);
+
+        var codeCutPolygonWithTabsConvex = api.gcode.cutPolygonWithTabs(convexPolygon, depth, cutProperties, tabProperties, safeZ);
+        printCode("codeCutPolygonWithTabsConvex", codeCutPolygonWithTabsConvex);
+
+        var codePocketPolygonConvex = api.gcode.pocketConvexPolygon(convexPolygon, depth, cutProperties, safeZ);
+        printCode("codePocketPolygonConvex", codePocketPolygonConvex);
+
+    </script>
+</body>
+</html>

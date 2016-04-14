@@ -28,7 +28,6 @@ api.math.createPoint = function(x, y, z) {
     };
 };
 
-//TODO: remove that?
 /**
  * Creates a vector. This is equivalent to createPoint.
  * @param {number} Optional. The x position.
@@ -70,15 +69,30 @@ api.math.rotation2D = function(point, center, angle, scale) {
     return newPoint;
 };
 
+//if no point defined, return false
+api.math.barycenter2D = function(points) {
+    var numberPoints = points.length;
+    var sumX = 0;
+    var sumY = 0;
+    var i = 0;
+
+    if(numberPoints === 0) {
+        return false;
+    }
+
+    for(i = 0; i < numberPoints; i++) {
+        sumX += points[i].x;
+        sumY += points[i].y;
+    }
+
+    return api.math.createPoint(sumX / numberPoints, sumY / numberPoints, 0);
+};
+
 /******************************** G-Code part *********************************/
 /**
  * This part defines functions for generating GCode.
  * When a function has a problem, returns false else the GCode.
  */
-
-//TODO: functions for cutting through material and letting taps
-//TODO: verify that for pocketting, it starts from the center to the border
-//      (else dangerous if cutting completely trough material because no tab)
 
 //We consider a three axis tool with Z as the height and depth
 //The coordinates are absolute
@@ -220,7 +234,6 @@ api.gcode.cutPath = function(path, feedrate, safeZ) {
         );
     }
 
-
     if(safeZ !== undefined) {
         code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
     }
@@ -239,11 +252,12 @@ api.gcode.cutPath = function(path, feedrate, safeZ) {
  * @param {object} The cut properties.
  * @param {object} The tabs properties.
  * @param {number} (Optional) The safe Z position to go after the cut in inches.
- * @return {string} The generated G-Code.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
 api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProperties, safeZ) {
-    if(polygon.length === 0) {
-        return "";
+    if(polygon.length < 3) {
+        return false;
     }
 
     var completePolygon = polygon.slice();
@@ -321,11 +335,12 @@ api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProper
  * @param {number} The depth in inches.
  * @param {object} The cut properties.
  * @param {number} (Optional) The safe Z position to go after the cut in inches.
- * @return {string} The generated G-Code.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
 api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
-    if(polygon.length === 0) {
-        return "";
+    if(polygon.length < 3) {
+        return false;
     }
 
     var t = api.gcode.createTabProperties(0, 0);
@@ -333,18 +348,103 @@ api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
 };
 
 /**
- * Generates G-Code for pocketting the polygon. The order of the polygon tips
+ * Generates G-Code for pocketing the convex polygon. The order of the polygon
+ * tips is important. The bit will go to a point to the next one and close the
+ * polygon by going from the last point to the first point. The polygon is
+ * considered 2D on the XY plane. If the polygon is not convex, the behaviour
+ * is undefined.
+ * @param {array} The polygon tip points.
+ * @param {number} The depth in inches.
+ * @param {object} The cut properties.
+ * @param {number} (Optional) The safe Z position to go after the cut.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
+ */
+api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
+    if(polygon.length < 3) {
+        return false;
+    }
+
+    var completePolygon = polygon.slice();
+    completePolygon.push(completePolygon[0]);
+    var deltaMove = cutProperties.stepover * cutProperties.bitWidth;
+    var center = api.math.barycenter2D(polygon);
+    var numberPoints = polygon.length;
+    var i = 0;
+    var vector;
+    var vectors = [];
+    var deltaPath = [];
+    var numberIteration = 0;
+    var path = [];
+    var currentZ = 0;
+    var finalZ = -depth;
+    var n = 0;
+    var biggestLength = 0;
+
+    for(i = 0; i < numberPoints; i++) {
+        vector = api.math.createVector(
+            center.x - polygon[i].x,
+            center.y - polygon[i].y,
+            0
+        );
+        biggestLength = Math.max(api.math.vectorLength2(vector), biggestLength);
+        vectors.push(vector);
+    }
+    vectors.push(vectors[0]);  //To follow completePolygon
+    numberIteration = biggestLength / deltaMove;
+
+    if(numberIteration === 0) {
+        return false;
+    }
+
+    for(i = 0; i < numberPoints; i++) {
+        deltaPath.push(api.math.createVector(
+            vectors[i].x / numberIteration,
+            vectors[i].y / numberIteration,
+            0
+        ));
+    }
+    deltaPath.push(deltaPath[0]);  //To follow completePolygon
+
+    path.push(api.math.createPoint(polygon[0].x, polygon[0].y, 0));
+    currentZ = 0;
+    finalZ = -depth;
+    while(currentZ > finalZ) {
+        currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
+
+        //Starting by numberIteration to cut inside-out
+        n = numberIteration + 1;  // The + 1 to enable the execution when n = 0
+        while(n > 0) {
+            n = Math.max(n - 1, 0);
+            for(i=0; i < numberPoints + 1; i++) {
+                path.push(api.math.createPoint(
+                    completePolygon[i].x + n * deltaPath[i].x,
+                    completePolygon[i].y + n * deltaPath[i].y,
+                    currentZ
+                ));
+            }
+        }
+    }
+
+    return api.gcode.cutPath(path, cutProperties.feedrate, safeZ);
+};
+
+/**
+ * Generates G-Code for pocketing the polygon. The order of the polygon tips
  * is important. The bit will go to a point to the next one and close the
  * polygon by going from the last point to the first point. The polygon is
  * considered 2D on the XY plane.
+ * WORK IN PROGRESS, RETURN FALSE. CONSIDER USING pocketConvexPolygon RIGHT NOW.
  * @param {array} The polygon tip points.
  * @param {number} The depth in inches.
  * @param {object} The cut properties.
  * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.pocketPolygon = function(path, depth, cutProperties, safeZ) {
-    //TODO: test arguments
+api.gcode.pocketSimplePolygon = function(path, depth, cutProperties, safeZ) {
+    //TODO: Refactor to pocket simplea polygons (convex or not)
+    //TODO: verify pocketing starts from the center to the border
+
 
     //Find barycenter
     var depthCut = 0;  //Positive number
@@ -399,7 +499,8 @@ api.gcode.pocketPolygon = function(path, depth, cutProperties, safeZ) {
         code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
     }
 
-    return code.join("\n");
+    // return code.join("\n");
+    return false;
 };
 
 /**
@@ -517,7 +618,7 @@ api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
 //Assume coordinate absolute
 //Assume the bit is above the board. End with the bit above the board
 /**
- * Generates G-Code for pocketting a circle.
+ * Generates G-Code for pocketing a circle.
  * @param {object} The center of the circle.
  * @param {number} The radius in inches.
  * @param {number} The depth in inches.
