@@ -23,6 +23,18 @@
             console.log(pathStr);
         }
 
+        // Test maths
+        var u = api.math.createVector(1, 0, 0);
+        var v = api.math.createVector(1, 1, 0);
+        var w = api.math.createVector(1, -1, 0);
+        var crossUV = api.math.cross(u, v);
+        var crossUW = api.math.cross(u, w);
+        console.log("crossUV: ");
+        console.log(crossUV);
+        console.log("crossUW: ");
+        console.log(crossUW);
+
+        // Tests polygon
         var bitWidth = 0.3;
         var bitLength = 0.4;
         var stepover = 0.3;
@@ -44,6 +56,9 @@
         polygon180.push(api.math.createPoint(-1, 2, 2));
         printPath("polygon180", polygon180);
 
+        console.log("Is polygon180 convex?");
+        console.log(api.math.isConvexPolygon(polygon180));
+
         var codeCutPath180 = api.gcode.cutPath(polygon180, feedrate, safeZ);
         printCode("codeCutPath180", codeCutPath180);
 
@@ -53,7 +68,7 @@
         var codeCutPolygonWithTabs180 = api.gcode.cutPolygonWithTabs(polygon180, depth, cutProperties, tabProperties, safeZ);
         printCode("codeCutPolygonWithTabs180", codeCutPolygonWithTabs180);
 
-        var codePocketPolygon180 = api.gcode.pocketPolygon(polygon180, depth, cutProperties, safeZ);
+        var codePocketPolygon180 = api.gcode.pocketSimplePolygon(polygon180, depth, cutProperties, safeZ);
         printCode("codePocketPolygon180", codePocketPolygon180);
 
         //Definition or a polygon without angle superior to 180 degree
@@ -68,6 +83,9 @@
         polygonRegular.push(api.math.createPoint(-2, 1, 0));
         printPath("polygonRegular", polygonRegular);
 
+        console.log("Is polygonRegular convex?");
+        console.log(api.math.isConvexPolygon(polygonRegular));
+
         var codeCutPathRegular = api.gcode.cutPath(polygonRegular, feedrate, safeZ);
         printCode("codeCutPathRegular", codeCutPathRegular);
 
@@ -77,7 +95,7 @@
         var codeCutPolygonWithTabsRegular = api.gcode.cutPolygonWithTabs(polygonRegular, depth, cutProperties, tabProperties, safeZ);
         printCode("codeCutPolygonWithTabsRegular", codeCutPolygonWithTabsRegular);
 
-        var codePocketPolygonRegular = api.gcode.pocketPolygon(polygonRegular, depth, cutProperties, safeZ);
+        var codePocketPolygonRegular = api.gcode.pocketSimplePolygon(polygonRegular, depth, cutProperties, safeZ);
         printCode("codePocketPolygonRegular", codePocketPolygonRegular);
 
         var codePocketPolygonRegularConvex = api.gcode.pocketConvexPolygon(polygonRegular, depth, cutProperties, safeZ);
@@ -89,6 +107,9 @@
         convexPolygon.push(api.math.createPoint(2, 2, 0));
         convexPolygon.push(api.math.createPoint(2, 1, 0));
         printPath("convexPolygon", convexPolygon);
+
+        console.log("Is convexPolygon convex?");
+        console.log(api.math.isConvexPolygon(convexPolygon));
 
         var codeCutPathConvex = api.gcode.cutPath(convexPolygon, feedrate, safeZ);
         printCode("codeCutPathConvex", codeCutPathConvex);

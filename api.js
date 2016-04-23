@@ -39,6 +39,21 @@ api.math.createVector = function (x, y, z) {
     return api.math.createPoint(x, y, z);
 };
 
+
+/**
+ * Creates a vector going from point A to point B.
+ * @param {object} Point A.
+ * @param {object} Point B.
+ * @return {object} A vector going from point A to point B.
+ */
+api.math.createVectorFromPoints = function(pointA, pointB) {
+    return api.math.createVector(
+        pointB.x - pointA.x,
+        pointB.y - pointA.y,
+        pointB.z - pointA.z
+    );
+};
+
 api.math.vectorLength2 = function(vector) {
     return vector.x * vector.x + vector.y * vector.y + vector.z * vector.z;
 };
@@ -55,6 +70,20 @@ api.math.vectorNormal = function(vector) {
 
     return api.math.createVector(vector.x / length, vector.y / length, vector.z / length);
 };
+
+api.math.scalar = function(vectorA, vectorB) {
+    return (vectorA.x * vectorB.x +
+            vectorA.y * vectorB.y +
+            vectorA.z * vectorB.z);
+};
+
+api.math.cross = function(vectorA, vectorB) {
+    var x = vectorA.y * vectorB.z - vectorA.z * vectorB.y;
+    var y = vectorA.z * vectorB.x - vectorA.x * vectorB.z;
+    var z = vectorA.x * vectorB.y - vectorA.y * vectorB.x;
+    return api.math.createVector(x, y, z);
+};
+
 
 // angle in degree
 api.math.rotation2D = function(point, center, angle, scale) {
@@ -86,6 +115,46 @@ api.math.barycenter2D = function(points) {
     }
 
     return api.math.createPoint(sumX / numberPoints, sumY / numberPoints, 0);
+};
+
+api.math.isConvexPolygon = function(polygon) {
+    var numberPoints = polygon.length;
+    if(numberPoints <= 2) {
+        return false;
+    }
+    if(numberPoints === 3) {
+        return true;
+    }
+
+    var completePolygon = polygon.slice();
+    completePolygon.push(completePolygon[0]);
+
+    //referenceSign = crossProduct(v1, v2).z > 0; //v1 => [length -1] - 0 ; v2 => [1] - 0;
+    var centerTip = completePolygon[0];
+    var tipA = completePolygon[numberPoints - 1];
+    var tipB = completePolygon[1];
+    var u = api.math.createVectorFromPoints(centerTip, tipA);
+    var v = api.math.createVectorFromPoints(centerTip, tipB);
+    var cross = api.math.cross(u, v);
+    var referenceAngle = (cross.z >= 0);
+    var angleSign;
+    var i;
+
+    for(i=1; i < numberPoints; i++) {
+        centerTip = completePolygon[i];
+        tipA = completePolygon[i - 1]; //v1 = [i - 1] - i;
+        tipB = completePolygon[i + 1]; //v2 = [i + 1] - i;
+        u = api.math.createVectorFromPoints(centerTip, tipA);
+        v = api.math.createVectorFromPoints(centerTip, tipB);
+        cross = api.math.cross(u, v);
+        // angleSign = crossProduct(v1, v2).z > 0;
+        angleSign = (cross.z >= 0);
+        if(angleSign !== referenceAngle) {
+            return false;
+        }
+    }
+
+    return true;
 };
 
 /******************************** G-Code part *********************************/
