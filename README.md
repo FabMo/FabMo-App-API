@@ -2,7 +2,7 @@
 
 Libraries for helping FabMo app developpers
 
-This API use the [earcut library](https://github.com/mapbox/earcut).
+This API uses the [earcut library](https://github.com/mapbox/earcut).
 
 **This API is very unstable for the moment and the development is nonregular.**
 
