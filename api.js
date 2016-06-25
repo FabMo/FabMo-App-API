@@ -1,4 +1,5 @@
 /*jslint todo: true, browser: true, continue: true, white: true*/
+/*global earcut*/
 
 /**
  * Written by Alex Canales for ShopBotTools, Inc.
@@ -503,73 +504,68 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
  * is important. The bit will go to a point to the next one and close the
  * polygon by going from the last point to the first point. The polygon is
  * considered 2D on the XY plane.
- * WORK IN PROGRESS, RETURN FALSE. CONSIDER USING pocketConvexPolygon RIGHT NOW.
  * @param {array} The polygon tip points.
  * @param {number} The depth in inches.
  * @param {object} The cut properties.
  * @param {number} (Optional) The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
-api.gcode.pocketSimplePolygon = function(path, depth, cutProperties, safeZ) {
-    //TODO: Refactor to pocket simplea polygons (convex or not)
-    //TODO: verify pocketing starts from the center to the border
+api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
 
-
-    //Find barycenter
-    var depthCut = 0;  //Positive number
-    var code = [];
-    var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
-
-    var center = { x : 0, y : 0 };
-    var sumX = 0, sumY = 0;
-    var i = 0, n = 0;
-    var x = 0, y = 0, biggestLength = 0;
-    var vectorPath = [], deltaPath = []; //deltaPath = how much move for each points
-
-    var numberIteration = 0;
-
-    for(i = 0; i < path.length; i++) {
-        sumX += path[i].x;
-        sumY += path[i].y;
-    }
-    center.x = sumX / path.length;
-    center.y = sumY / path.length;
-
-    //Set vectors from points to center
-    for(i = 0; i < path.length; i++) {
-        x = center.x - path[i].x;
-        y = center.y - path[i].y;
-        biggestLength = Math.max(Math.sqrt(x * x + y * y), biggestLength);
-        vectorPath.push({ x : x, y : y });
-    }
-    numberIteration = biggestLength / (cutProperties.bitWidth * cutProperties.stepover); //XXX: not sure this is the way
-    for(i = 0; i < vectorPath.length; i++) {
-        x = vectorPath[i].x;
-        y = vectorPath[i].y;
-        deltaPath.push({ x : x / numberIteration, y : y / numberIteration });
+    function convertVertexToPoint(earcutPolygon, vertexIndex) {
+        var xIndex = vertexIndex * 2;  // 2 because 2D
+        return api.math.createPoint(
+            earcutPolygon[xIndex],
+            earcutPolygon[xIndex + 1],
+            0
+        );
     }
 
-    code.push("G1 X" + path[path.length - 1].x.toFixed(5) + " Y" + path[path.length - 1].y.toFixed(5) + feedrateString);
-    while(depthCut < depth) {
-        depthCut = Math.min(depthCut + cutProperties.bitLength, depth);
-        code.push("G1 Z" + (-depthCut).toFixed(5) + feedrateString);
-        while(n < numberIteration)
-        {
-            for(i=0; i < path.length; i++) {
-                x = path[i].x + n * deltaPath[i].x;
-                y = path[i].y + n * deltaPath[i].y;
-                code.push("G1 X" + x.toFixed(5) + " Y" + y.toFixed(5) + feedrateString);
-            }
-            n = Math.min(n + 1, numberIteration);
+    function convertTriangleVertexIndicesToTriangle(earcutPolygon, a, b, c) {
+        var triangle = [];
+        triangle.push(convertVertexToPoint(earcutPolygon, a));
+        triangle.push(convertVertexToPoint(earcutPolygon, b));
+        triangle.push(convertVertexToPoint(earcutPolygon, c));
+        return triangle;
+    }
+
+    function triangulatePolygon(polygon) {
+        var triangles = [];
+
+        var earcutPolygon = [];
+        var i = 0;
+        for(i = 0; i < polygon.length; i++) {
+            earcutPolygon.push(polygon[i].x);
+            earcutPolygon.push(polygon[i].y);
         }
+
+        var trianglesVertices = earcut(earcutPolygon);
+
+        for(i = 0; i < trianglesVertices.length; i += 3) {
+            triangles.push(
+                convertTriangleVertexIndicesToTriangle(
+                    earcutPolygon,
+                    trianglesVertices[i],
+                    trianglesVertices[i + 1],
+                    trianglesVertices[i + 2]
+                )
+            );
+        }
+
+        return triangles;
     }
 
-    if(safeZ !== undefined) {
-        code.push("G1 Z" + safeZ.toFixed(5) + feedrateString);
+    var triangles = triangulatePolygon(polygon);
+    var trianglesCode = [];
+    var i = 0;
+
+    for(i = 0; i < triangles.length; i++) {
+        trianglesCode.push(
+            api.gcode.pocketConvexPolygon(triangles[i], depth, cutProperties, safeZ)
+        );
     }
 
-    // return code.join("\n");
-    return false;
+    return trianglesCode.join("\n"); // return the codes
 };
 
 /**

@@ -6,6 +6,14 @@
 </head>
 <body>
     Testing API.
+
+    <br />
+    <br />
+    <label id="label" for="code"></label>
+    <br />
+    <textarea id="code" name="" cols="30" rows="10"></textarea>
+
+    <script src="earcut.js" type="text/javascript"></script>
     <script src="api.js" type="text/javascript"></script>
     <script type="text/javascript">
         function printCode(name, code) {
@@ -21,6 +29,11 @@
                 pathStr += "(" + path[i].x + "; " + path[i].y + "; " + path[i].z + ")\n";
             }
             console.log(pathStr);
+        }
+
+        function printCodeInTextarea(name, code) {
+            document.getElementById("label").innerHTML = name;
+            document.getElementById("code").value = code;
         }
 
         // Test maths
@@ -60,7 +73,7 @@
         console.log(api.math.isConvexPolygon(polygon180));
 
         var codeCutPath180 = api.gcode.cutPath(polygon180, feedrate, safeZ);
-        printCode("codeCutPath180", codeCutPath180);
+        // printCode("codeCutPath180", codeCutPath180);
 
         var codeCutPolygon180 = api.gcode.cutPolygon(polygon180, depth, cutProperties, safeZ);
         printCode("codeCutPolygon180", codeCutPolygon180);
@@ -69,7 +82,7 @@
         printCode("codeCutPolygonWithTabs180", codeCutPolygonWithTabs180);
 
         var codePocketPolygon180 = api.gcode.pocketSimplePolygon(polygon180, depth, cutProperties, safeZ);
-        printCode("codePocketPolygon180", codePocketPolygon180);
+        printCodeInTextarea("codePocketPolygon180", codePocketPolygon180);
 
         //Definition or a polygon without angle superior to 180 degree
         var polygonRegular = [];
