@@ -286,22 +286,23 @@ api.math.isConvexPolygon = function(polygon) {
 /**
  * This part defines functions for generating GCode.
  * When a function has a problem, returns false else the GCode.
+ *
+ * We consider a three axis tool with Z as the height and depth.
+ * The coordinates are absolute
  */
 
-//We consider a three axis tool with Z as the height and depth
-//The coordinates are absolute
-// End code:        code += "M5\nM2\nM30";
+//TODO:  End code:        code += "M5\nM2\nM30";
 
 api.gcode = {};
 
-//TODO: find a better name than "cutProperties"
 /**
  * Creates the cut properties.
- * @param {number} Bit width in inches.
- * @param {number} Bit length in inches.
- * @param {number} The stepover ratio.
- * @param {number} The feed rate in inches per minutes.
- * @return {object} The cut properties.
+ *
+ * @param {number} [bitWidth=0] - Bit width in inches.
+ * @param {number} [bitLength=0] - Bit length in inches.
+ * @param {number} [stepover=0] - The stepover ratio.
+ * @param {number} [feedrate=0] - The feed rate in inches per minutes.
+ * @return {CutProperties} The cut properties.
  */
 api.gcode.createCutProperties = function(bitWidth, bitLength, stepover, feedrate) {
     return {
@@ -312,6 +313,13 @@ api.gcode.createCutProperties = function(bitWidth, bitLength, stepover, feedrate
     };
 };
 
+/**
+ * Creates the tab properties.
+ *
+ * @param {number} [width=0] - Width in inches.
+ * @param {number} [length=0] - Length in inches.
+ * @return {TabProperties} The tab properties.
+ */
 api.gcode.createTabProperties = function(width, height) {
     return {
         width : (width === undefined) ? 0 : width,
@@ -320,6 +328,17 @@ api.gcode.createTabProperties = function(width, height) {
 };
 
 //TODO: change function name
+//TODO: do not make this function static
+/**
+ * Returns the 2D points path for the cut. If the length is equal to 2, there
+ * is notabs to do else the length is 4 and the tabs are defined in the points
+ * at index 1 and 2.
+ *
+ * @param {Vector} startPoint - The starting point (considered 2D).
+ * @param {Vector} endPoint - The ending point (considered 2D).
+ * @param {TabProperties} The tab properties.
+ * @return {Vector[]} The 2D points path for the cut.
+ */
 api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) {
     //We are not using the Z value:
     var startPoint2D = api.math.createVector(startPoint.x, startPoint.y, 0);
@@ -332,8 +351,9 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
     }
 
     //Tabs bigger than the actual cut path
-    var vector = api.math.createVector(endPoint2D.x - startPoint2D.x,
-            endPoint2D.y - startPoint2D.y, 0);
+    // var vector = api.math.createVector(endPoint2D.x - startPoint2D.x,
+    //         endPoint2D.y - startPoint2D.y, 0);
+    var vector = api.math.createVectorFromPoints(startPoint2D, endPoint2D);
     var length2 = api.math.vectorLengthSquared(vector);
     if(length2 <= (tabProperties.width * tabProperties.width)) {
         return points;
@@ -342,10 +362,12 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
     //Create the intermediate points
     var normalized = api.math.vectorNormalizedVector(vector);
     var distanceStartTab = (api.math.vectorLength(vector) - tabProperties.width) / 2;
-    var pointA = api.math.createVector(startPoint2D.x, startPoint2D.y, 0);
+    // var pointA = api.math.createVector(startPoint2D.x, startPoint2D.y, 0);
+    var pointA = api.math.cloneVector(startPoint2D);
     pointA.x += normalized.x * distanceStartTab;
     pointA.y += normalized.y * distanceStartTab;
-    var pointB = api.math.createVector(pointA.x, pointA.y, 0);
+    // var pointB = api.math.createVector(pointA.x, pointA.y, 0);
+    var pointB = api.math.cloneVector(pointA);
     pointB.x += normalized.x * tabProperties.width;
     pointB.y += normalized.y * tabProperties.width;
 
@@ -354,9 +376,10 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
 };
 
 /**
- * Generates G-Code for moving as fast as possible the bit to the point. Never
- * use this function for cutting through material.
- * @param {object} The point to reach.
+ * Generates G-Code for moving as fast as possible the bit to the point (G0).
+ * Never use this function for cutting through material.
+ *
+ * @param {Vector} point - The point to reach.
  * @return {string} The generated G-Code.
  */
 api.gcode.jogTo = function(point) {
@@ -374,10 +397,11 @@ api.gcode.jogTo = function(point) {
 };
 
 /**
- * Generates G-Code for moving the bit to the point. This is the function to
- * use when cutting through material.
- * @param {object} The point to reach.
- * @param {number} The feed rate in inches per minutes.
+ * Generates G-Code for moving the bit to the point (G1). This is the function
+ * to use when cutting through material.
+ *
+ * @param {Vector} point - The point to reach.
+ * @param {number} feedrate - The feed rate in inches per minutes.
  * @return {string} The generated G-Code.
  */
 api.gcode.moveTo = function(point, feedrate) {
@@ -405,9 +429,10 @@ api.gcode.moveTo = function(point, feedrate) {
  * Generates G-Code for cutting the path. The bit will simply go from a point
  * to another. This function is used to have better performance than using
  * consecutively the moveTo function.
- * @param {array} The path points.
- * @param {number} The feed rate in inches per minutes.
- * @param {number} (Optional) The safe Z position to go after the cut.
+ *
+ * @param {Vector[]} path - The path points.
+ * @param {number} feedrate - The feed rate in inches per minutes.
+ * @param {number} [safeZ] - The safe Z position to go after the cut.
  * @return {string} The generated G-Code.
  */
 api.gcode.cutPath = function(path, feedrate, safeZ) {
@@ -441,15 +466,18 @@ api.gcode.cutPath = function(path, feedrate, safeZ) {
  * close the polygon by going from the last point to the first point. The
  * polygon is considered 2D on the XY plane. Use this function if you cut
  * completely through the material.
- * @param {array} The polygon tip points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {object} The tabs properties.
- * @param {number} (Optional) The safe Z position to go after the cut in inches.
+ *
+ * @param {Vector[]} polygon - The polygon tip points.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {TabProperties} tabProperties - The tabs properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
  * @return {string|boolean} The generated G-Code or false if impossible to
  *                          parse the given polygon.
  */
-api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProperties, safeZ) {
+api.gcode.cutPolygonWithTabs = function(
+    polygon, depth, cutProperties, tabProperties, safeZ
+) {
     if(polygon.length < 3) {
         return false;
     }
@@ -525,10 +553,11 @@ api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProper
  * considered 2D on the XY plane. Do not use this function if you cut completely
  * through the material: you need tabs for that. Without tabs, the cutting part
  * can be thrown because of the spindle rotation.
- * @param {array} The polygon tip points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut in inches.
+ *
+ * @param {Vector[]} polygon - The polygon tip points.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
  * @return {string|boolean} The generated G-Code or false if impossible to
  *                          parse the given polygon.
  */
@@ -547,10 +576,11 @@ api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
  * polygon by going from the last point to the first point. The polygon is
  * considered 2D on the XY plane. If the polygon is not convex, the behaviour
  * is undefined.
- * @param {array} The polygon tip points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut.
+ *
+ * @param {Vector[]} polygon - The polygon tip points.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
  * @return {string|boolean} The generated G-Code or false if impossible to
  *                          parse the given polygon.
  */
@@ -628,10 +658,11 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
  * is important. The bit will go to a point to the next one and close the
  * polygon by going from the last point to the first point. The polygon is
  * considered 2D on the XY plane.
- * @param {array} The polygon tip points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut.
+ *
+ * @param {Vector[]} polygon - The polygon tip points.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
  * @return {string} The generated G-Code.
  */
 api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
@@ -696,14 +727,19 @@ api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
  * Generates G-Code for cutting the circle and letting tabs. The circle is
  * considered 2D on the XY plane. Use this function if you cut completely
  * through the material.
- * @param {array} The polygon tip points.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {object} The tabs properties.
- * @param {number} (Optional) The safe Z position to go after the cut in inches.
- * @return {string} The generated G-Code.
+ *
+ * @param {Vector} center - The circle center.
+ * @param {number} radius - The radius in inches.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {TabProperties} tabProperties - The tabs properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
-api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tabProperties, safeZ) {
+api.gcode.cutCircleWithTabs = function(
+    center, radius, depth, cutProperties, tabProperties, safeZ
+) {
     if(radius === 0) {
         return false;
     }
@@ -792,12 +828,14 @@ api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tab
  * considered 2D on the XY plane. Do not use this function if you cut completely
  * through the material: you need tabs for that. Without tabs, the cutting part
  * can be thrown because of the spindle rotation.
- * @param {object} The center of the circle.
- * @param {number} The radius in inches.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} (Optional) The safe Z position to go after the cut.
- * @return {string} The generated G-Code.
+ *
+ * @param {Vector} center - The circle center.
+ * @param {number} radius - The radius in inches.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
 api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
     var t = api.gcode.createTabProperties(0, 0);
@@ -808,13 +846,14 @@ api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
 //Assume the bit is above the board. End with the bit above the board
 /**
  * Generates G-Code for pocketing a circle.
- * @param {object} The center of the circle.
- * @param {number} The radius in inches.
- * @param {number} The depth in inches.
- * @param {object} The cut properties.
- * @param {number} The stepover in inches.
- * @param {number} (Optional) The safe Z position to go after the cut.
- * @return {string} The generated G-Code.
+ *
+ * @param {Vector} center - The circle center.
+ * @param {number} radius - The radius in inches.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
 function pocketCircle(center, radius, depth, cutProperties, safeZ) {
     if(cutProperties.bitWidth > radius * 2) {
@@ -850,7 +889,9 @@ function pocketCircle(center, radius, depth, cutProperties, safeZ) {
 }
 
 /**
- * Generates G-Code for letting a comment in the code.
+ * Generates G-Code for letting a comment in the code (in parenthesis).
+ *
+ * @param {string} message - The comment.
  * @return {string} The generated G-Code.
  */
 api.gcode.comment = function(message) {
@@ -858,9 +899,10 @@ api.gcode.comment = function(message) {
 };
 
 /**
- * Generates G-Code for setting the values in the code in inches. Does not
- * change the fast that the values uses by the function in this API are in
+ * Generates G-Code for setting the values in the code in inches (G20).  Does
+ * not change the fact that the values used by the functions in this API are in
  * inches.
+ *
  * @return {string} The generated G-Code.
  */
 api.gcode.inInches = function() {
@@ -868,9 +910,10 @@ api.gcode.inInches = function() {
 };
 
 /**
- * Generates G-Code for setting the values in the code in millimeters. Does not
- * change the fast that the values uses by the function in this API are in
- * inches.
+ * Generates G-Code for setting the values in the code in millimeters (G21).
+ * Does not change the fact that the values used by the functions in this API
+ * are in inches.
+ *
  * @return {string} The generated G-Code.
  */
 api.gcode.inMillimeters = function() {
@@ -878,7 +921,8 @@ api.gcode.inMillimeters = function() {
 };
 
 /**
- * Generates G-Code for turning on the spindle.
+ * Generates G-Code for turning on the spindle (M4).
+ *
  * @return {string} The generated G-Code.
  */
 api.gcode.spindleOn = function() {
@@ -886,9 +930,19 @@ api.gcode.spindleOn = function() {
 };
 
 /**
- * Generates G-Code for turning off the spindle.
+ * Generates G-Code for turning off the spindle (M8).
+ *
  * @return {string} The generated G-Code.
  */
 api.gcode.spindleOff = function() {
     return "M8";
+};
+
+/**
+ * Generates G-Code for returning to the start of the program (M30).
+ *
+ * @return {string} The generated G-Code.
+ */
+api.gcode.rewind = function() {
+    return "M30";
 };
