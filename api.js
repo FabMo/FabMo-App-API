@@ -14,14 +14,33 @@ var api = {};
 
 api.math = {};
 
+api.math.FLOAT_PRECISION = 0.001;
+
 /**
- * Creates a point.
- * @param {number} Optional. The x position.
- * @param {number} Optional. The y position.
- * @param {number} Optional. The z position.
- * @return {object} A point.
+ * Checks if two numbers are nearly equal. This function is used to avoid
+ * to have too much precision when checking values between floating-point
+ * numbers.
+ *
+ * @param {number} a - Number A.
+ * @param {number} b - Number B.
+ * @param {number} [precision=api.math.FLOAT_PRECISION] - The precision of the
+ * comparison.
+ * @return {boolean} True if the two values are nearly equal.
  */
-api.math.createPoint = function(x, y, z) {
+api.math.nearlyEqual = function(a, b, precision) {
+    var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
+    return Math.abs(b - a) <= p;
+};
+
+/**
+ * Creates a vector. Vectors are used to store simple points too.
+ *
+ * @param {number} [x=0] - The x position.
+ * @param {number} [y=0] - The y position.
+ * @param {number} [z=0] - The z position.
+ * @return {Vector} A vector.
+ */
+api.math.createVector = function (x, y, z) {
     return {
         x : (x === undefined) ? 0 : x,
         y : (y === undefined) ? 0 : y,
@@ -30,22 +49,21 @@ api.math.createPoint = function(x, y, z) {
 };
 
 /**
- * Creates a vector. This is equivalent to createPoint.
- * @param {number} Optional. The x position.
- * @param {number} Optional. The y position.
- * @param {number} Optional. The z position.
- * @return {object} A point.
+ * Clones a vector.
+ *
+ * @param {Vector} vector - The vector to clone.
+ * @return {Vector} A new vector.
  */
-api.math.createVector = function (x, y, z) {
-    return api.math.createPoint(x, y, z);
+api.math.cloneVector = function(vector) {
+    return api.math.createVector(vector.x, vector.y, vector.z);
 };
 
 
 /**
  * Creates a vector going from point A to point B.
- * @param {object} Point A.
- * @param {object} Point B.
- * @return {object} A vector going from point A to point B.
+ * @param {Vector} pointA - Point A.
+ * @param {Vector} pointB - Point B.
+ * @return {Vector} A new vector going from point A to point B.
  */
 api.math.createVectorFromPoints = function(pointA, pointB) {
     return api.math.createVector(
@@ -55,29 +73,77 @@ api.math.createVectorFromPoints = function(pointA, pointB) {
     );
 };
 
-api.math.vectorLength2 = function(vector) {
+/**
+ * Checks if two vector are equal (i.e at the same position).
+ *
+ * @param {Vector} vectorA - Vector A.
+ * @param {Vector} vectorB - Vector B.
+ * @param {number} [precision=api.math.FLOAT_PRECISION] - The precision of the
+ * comparison.
+ * @return {boolean} True if the two vectors are equal.
+ */
+api.math.vectorEqual = function(vectorA, vectorB, precision) {
+    var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
+    return api.math.nearlyEqual(vectorA.x, vectorB.x, p) &&
+        api.math.nearlyEqual(vectorA.y, vectorB.y, p) &&
+        api.math.nearlyEqual(vectorA.z, vectorB.z, p);
+};
+
+/**
+ * Returns the squared length of the vector.
+ *
+ * @param {Vector} vector - The vector.
+ * @return {number}  The squared length.
+ */
+api.math.vectorLengthSquared = function(vector) {
     return vector.x * vector.x + vector.y * vector.y + vector.z * vector.z;
 };
 
+/**
+ * Returns the length of the vector.
+ *
+ * @param {Vector} vector - The vector.
+ * @return {number}  The length.
+ */
 api.math.vectorLength = function(vector) {
-    return Math.sqrt(api.math.vectorLength2(vector));
+    return Math.sqrt(api.math.vectorLengthSquared(vector));
 };
 
-api.math.vectorNormal = function(vector) {
-    var length = api.math.vectorLength(vector);
-    if(length === 0) {
+/**
+ * Returns the normalized vector (without changing the vector).
+ *
+ * @param {Vector} vector - The vector.
+ * @return {Vector} The normalized vector.
+ */
+api.math.vectorNormalizedVector = function(vector) {
+    var l = api.math.vectorLength(vector);
+    if(l === 0) {
         return vector;
     }
 
-    return api.math.createVector(vector.x / length, vector.y / length, vector.z / length);
+    return api.math.createVector(vector.x / l, vector.y / l, vector.z / l);
 };
 
+/**
+ * Returns the scalar product of two vectors.
+ *
+ * @param {Vector} vectorA - Vector A.
+ * @param {Vector} vectorB - Vector B.
+ * @return {number} The scalar product.
+ */
 api.math.scalar = function(vectorA, vectorB) {
     return (vectorA.x * vectorB.x +
             vectorA.y * vectorB.y +
             vectorA.z * vectorB.z);
 };
 
+/**
+ * Returns the cross product of two vectors.
+ *
+ * @param {Vector} vectorA - Vector A.
+ * @param {Vector} vectorB - Vector B.
+ * @return {Vector} The cross product.
+ */
 api.math.cross = function(vectorA, vectorB) {
     var x = vectorA.y * vectorB.z - vectorA.z * vectorB.y;
     var y = vectorA.z * vectorB.x - vectorA.x * vectorB.z;
@@ -85,21 +151,36 @@ api.math.cross = function(vectorA, vectorB) {
     return api.math.createVector(x, y, z);
 };
 
-
-// angle in degree
+/**
+ * Returns a new point which is the result of a rotation of the point according
+ * to the center, the angle and scale.
+ *
+ * @param {Vector} point - The original point to transform. Not modified.
+ * @param {Vector} center - The center of rotation and scale.
+ * @param {number} angle - The angle in degree.
+ * @param {number} scale - The scale of the transformation.
+ * @return {Vector} The result of the transformation.
+ */
 api.math.rotation2D = function(point, center, angle, scale) {
     // newPoint = scale * point * exp(i angle) + center
     var angleRad = angle * Math.PI / 180;
     var cosAngle = Math.cos(angleRad);
     var sinAngle = Math.sin(angleRad);
     var vector = api.math.createVector(point.x - center.x, point.y - center.y, 0);
-    var newPoint = api.math.createPoint(center.x, center.y, 0);
+    var newPoint = api.math.createVector(center.x, center.y, 0);
     newPoint.x += scale * (vector.x * cosAngle - vector.y * sinAngle);
     newPoint.y += scale * (vector.x * sinAngle + vector.y * cosAngle);
     return newPoint;
 };
 
-//if no point defined, return false
+/**
+ * Returns the barycenter of the polygon defined by an array of points. Points
+ * are considered 2D and having a weight of 1.
+ *
+ * @param {Vector[]) points - The array of points defining the polygon.
+ * @return {Vector|boolean} The barycenter of the polygon. Returns false if the
+ * array is empty.
+ */
 api.math.barycenter2D = function(points) {
     var numberPoints = points.length;
     var sumX = 0;
@@ -115,9 +196,32 @@ api.math.barycenter2D = function(points) {
         sumY += points[i].y;
     }
 
-    return api.math.createPoint(sumX / numberPoints, sumY / numberPoints, 0);
+    return api.math.createVector(sumX / numberPoints, sumY / numberPoints, 0);
 };
 
+/**
+ * Returns the sign of the angle defined by the vectors center to pointA and
+ * center to pointB.
+ *
+ * @param {Vector} center - The center of the angle.
+ * @param {Vector} pointA - Point A.
+ * @param {Vector} pointB - Point B.
+ * @return {boolean} True if the sign is positive or zero, else false.
+ * */
+api.math.angleSignPoints = function(center, pointA, pointB) {
+    var u = api.math.createVectorFromPoints(center, pointA);
+    var v = api.math.createVectorFromPoints(center, pointB);
+    var cross = api.math.cross(u, v);
+    return (cross.z >= 0);
+};
+
+/**
+ * Checks if the polygon defined by the array of points is convex. Points
+ * are considered 2D.
+ *
+ * @param {Vector[]) points - The array of points defining the polygon.
+ * @return {boolean} True if the polygon is convex.
+ */
 api.math.isConvexPolygon = function(polygon) {
     var numberPoints = polygon.length;
     if(numberPoints <= 2) {
@@ -130,30 +234,50 @@ api.math.isConvexPolygon = function(polygon) {
     var completePolygon = polygon.slice();
     completePolygon.push(completePolygon[0]);
 
-    //referenceSign = crossProduct(v1, v2).z > 0; //v1 => [length -1] - 0 ; v2 => [1] - 0;
-    var centerTip = completePolygon[0];
-    var tipA = completePolygon[numberPoints - 1];
-    var tipB = completePolygon[1];
-    var u = api.math.createVectorFromPoints(centerTip, tipA);
-    var v = api.math.createVectorFromPoints(centerTip, tipB);
-    var cross = api.math.cross(u, v);
-    var referenceAngle = (cross.z >= 0);
+    var referenceAngleSign = api.math.angleSignPoints(
+        completePolygon[0],
+        completePolygon[numberPoints - 1],
+        completePolygon[1]
+    );
     var angleSign;
     var i;
 
     for(i=1; i < numberPoints; i++) {
-        centerTip = completePolygon[i];
-        tipA = completePolygon[i - 1]; //v1 = [i - 1] - i;
-        tipB = completePolygon[i + 1]; //v2 = [i + 1] - i;
-        u = api.math.createVectorFromPoints(centerTip, tipA);
-        v = api.math.createVectorFromPoints(centerTip, tipB);
-        cross = api.math.cross(u, v);
-        // angleSign = crossProduct(v1, v2).z > 0;
-        angleSign = (cross.z >= 0);
-        if(angleSign !== referenceAngle) {
+        angleSign = api.math.angleSignPoints(
+            completePolygon[i],
+            completePolygon[i - 1],
+            completePolygon[i + 1]
+        );
+        if(angleSign !== referenceAngleSign) {
             return false;
         }
     }
+
+    // //referenceSign = crossProduct(v1, v2).z > 0;
+    // //v1 => [length -1] - 0 ; v2 => [1] - 0;
+    // var centerTip = completePolygon[0];
+    // var tipA = completePolygon[numberPoints - 1];
+    // var tipB = completePolygon[1];
+    // var u = api.math.createVectorFromPoints(centerTip, tipA);
+    // var v = api.math.createVectorFromPoints(centerTip, tipB);
+    // var cross = api.math.cross(u, v);
+    // var referenceAngle = (cross.z >= 0);
+    // var angleSign;
+    // var i;
+    //
+    // for(i=1; i < numberPoints; i++) {
+    //     centerTip = completePolygon[i];
+    //     tipA = completePolygon[i - 1]; //v1 = [i - 1] - i;
+    //     tipB = completePolygon[i + 1]; //v2 = [i + 1] - i;
+    //     u = api.math.createVectorFromPoints(centerTip, tipA);
+    //     v = api.math.createVectorFromPoints(centerTip, tipB);
+    //     cross = api.math.cross(u, v);
+    //     // angleSign = crossProduct(v1, v2).z > 0;
+    //     angleSign = (cross.z >= 0);
+    //     if(angleSign !== referenceAngle) {
+    //         return false;
+    //     }
+    // }
 
     return true;
 };
@@ -198,8 +322,8 @@ api.gcode.createTabProperties = function(width, height) {
 //TODO: change function name
 api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) {
     //We are not using the Z value:
-    var startPoint2D = api.math.createPoint(startPoint.x, startPoint.y, 0);
-    var endPoint2D = api.math.createPoint(endPoint.x, endPoint.y, 0);
+    var startPoint2D = api.math.createVector(startPoint.x, startPoint.y, 0);
+    var endPoint2D = api.math.createVector(endPoint.x, endPoint.y, 0);
     var points = [startPoint2D, endPoint2D];
 
     //No need of tabs
@@ -210,20 +334,20 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
     //Tabs bigger than the actual cut path
     var vector = api.math.createVector(endPoint2D.x - startPoint2D.x,
             endPoint2D.y - startPoint2D.y, 0);
-    var length2 = api.math.vectorLength2(vector);
+    var length2 = api.math.vectorLengthSquared(vector);
     if(length2 <= (tabProperties.width * tabProperties.width)) {
         return points;
     }
 
     //Create the intermediate points
-    var normal = api.math.vectorNormal(vector);
+    var normalized = api.math.vectorNormalizedVector(vector);
     var distanceStartTab = (api.math.vectorLength(vector) - tabProperties.width) / 2;
-    var pointA = api.math.createPoint(startPoint2D.x, startPoint2D.y, 0);
-    pointA.x += normal.x * distanceStartTab;
-    pointA.y += normal.y * distanceStartTab;
-    var pointB = api.math.createPoint(pointA.x, pointA.y, 0);
-    pointB.x += normal.x * tabProperties.width;
-    pointB.y += normal.y * tabProperties.width;
+    var pointA = api.math.createVector(startPoint2D.x, startPoint2D.y, 0);
+    pointA.x += normalized.x * distanceStartTab;
+    pointA.y += normalized.y * distanceStartTab;
+    var pointB = api.math.createVector(pointA.x, pointA.y, 0);
+    pointB.x += normalized.x * tabProperties.width;
+    pointB.y += normalized.y * tabProperties.width;
 
     points.splice(1, 0, pointA, pointB);
     return points;
@@ -354,7 +478,7 @@ api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProper
     }
 
     point = completePolygon[0];
-    path.push(api.math.createPoint(point.x, point.y, 0));
+    path.push(api.math.createVector(point.x, point.y, 0));
 
     currentZ = 0;
     finalZ = -depth;
@@ -364,29 +488,29 @@ api.gcode.cutPolygonWithTabs = function(polygon, depth, cutProperties, tabProper
         if(useTabs === true && currentZ < tabZ) {
             if(pathsWithTabs.length > 0 && pathsWithTabs[0].length > 0) {
                 point = pathsWithTabs[0][0];
-                path.push(api.math.createPoint(point.x, point.y, currentZ));
+                path.push(api.math.createVector(point.x, point.y, currentZ));
             }
             for(i=0; i < pathsWithTabs.length; i++) {
                 // Not pushing first one to avoid duplicate G-Code
                 point = pathsWithTabs[i][1];
-                path.push(api.math.createPoint(point.x, point.y, currentZ));
+                path.push(api.math.createVector(point.x, point.y, currentZ));
 
                 // Here a path length is equal to 2 (no tabs) or 4 (with tabs)
                 if(pathsWithTabs[i].length === 4) {
-                    path.push(api.math.createPoint(point.x, point.y, tabZ));
+                    path.push(api.math.createVector(point.x, point.y, tabZ));
 
                     point = pathsWithTabs[i][2];
-                    path.push(api.math.createPoint(point.x, point.y, tabZ));
-                    path.push(api.math.createPoint(point.x, point.y, currentZ));
+                    path.push(api.math.createVector(point.x, point.y, tabZ));
+                    path.push(api.math.createVector(point.x, point.y, currentZ));
 
                     point = pathsWithTabs[i][3];
-                    path.push(api.math.createPoint(point.x, point.y, currentZ));
+                    path.push(api.math.createVector(point.x, point.y, currentZ));
                 }
             }
         } else {
             for(i=0; i < completePolygon.length; i++) {
                 point = completePolygon[i];
-                path.push(api.math.createPoint(point.x, point.y, currentZ));
+                path.push(api.math.createVector(point.x, point.y, currentZ));
             }
         }
     }
@@ -457,7 +581,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
             center.y - polygon[i].y,
             0
         );
-        biggestLength = Math.max(api.math.vectorLength2(vector), biggestLength);
+        biggestLength = Math.max(api.math.vectorLengthSquared(vector), biggestLength);
         vectors.push(vector);
     }
     vectors.push(vectors[0]);  //To follow completePolygon
@@ -476,7 +600,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
     }
     deltaPath.push(deltaPath[0]);  //To follow completePolygon
 
-    path.push(api.math.createPoint(polygon[0].x, polygon[0].y, 0));
+    path.push(api.math.createVector(polygon[0].x, polygon[0].y, 0));
     currentZ = 0;
     finalZ = -depth;
     while(currentZ > finalZ) {
@@ -487,7 +611,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
         while(n > 0) {
             n = Math.max(n - 1, 0);
             for(i=0; i < numberPoints + 1; i++) {
-                path.push(api.math.createPoint(
+                path.push(api.math.createVector(
                     completePolygon[i].x + n * deltaPath[i].x,
                     completePolygon[i].y + n * deltaPath[i].y,
                     currentZ
@@ -514,7 +638,7 @@ api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
 
     function convertVertexToPoint(earcutPolygon, vertexIndex) {
         var xIndex = vertexIndex * 2;  // 2 because 2D
-        return api.math.createPoint(
+        return api.math.createVector(
             earcutPolygon[xIndex],
             earcutPolygon[xIndex + 1],
             0
@@ -584,7 +708,7 @@ api.gcode.cutCircleWithTabs = function(center, radius, depth, cutProperties, tab
         return false;
     }
 
-    var startPoint = api.math.createPoint(center.x + radius, center.y, 0);
+    var startPoint = api.math.createVector(center.x + radius, center.y, 0);
     var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
     var useTabs = (tabProperties.height !== 0 && tabProperties.width !== 0);
     var codeTabs = [];
