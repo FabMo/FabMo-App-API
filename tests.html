@@ -15,6 +15,7 @@
 
     <script src="earcut.js" type="text/javascript"></script>
     <script src="api.js" type="text/javascript"></script>
+    <script src="test.js" type="text/javascript"></script>
     <script type="text/javascript">
         function printCode(name, code) {
             console.log("The code \"" + name + "\" is: ");
@@ -35,17 +36,6 @@
             document.getElementById("label").innerHTML = name;
             document.getElementById("code").value = code;
         }
-
-        // Test maths
-        var u = api.math.createVector(1, 0, 0);
-        var v = api.math.createVector(1, 1, 0);
-        var w = api.math.createVector(1, -1, 0);
-        var crossUV = api.math.cross(u, v);
-        var crossUW = api.math.cross(u, w);
-        console.log("crossUV: ");
-        console.log(crossUV);
-        console.log("crossUW: ");
-        console.log(crossUW);
 
         // Tests polygon
         var bitWidth = 0.3;

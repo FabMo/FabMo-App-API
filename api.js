@@ -115,7 +115,7 @@ api.math.vectorLength = function(vector) {
  * @param {Vector} vector - The vector.
  * @return {Vector} The normalized vector.
  */
-api.math.vectorNormalizedVector = function(vector) {
+api.math.normalizedVector = function(vector) {
     var l = api.math.vectorLength(vector);
     if(l === 0) {
         return vector;
@@ -253,32 +253,6 @@ api.math.isConvexPolygon = function(polygon) {
         }
     }
 
-    // //referenceSign = crossProduct(v1, v2).z > 0;
-    // //v1 => [length -1] - 0 ; v2 => [1] - 0;
-    // var centerTip = completePolygon[0];
-    // var tipA = completePolygon[numberPoints - 1];
-    // var tipB = completePolygon[1];
-    // var u = api.math.createVectorFromPoints(centerTip, tipA);
-    // var v = api.math.createVectorFromPoints(centerTip, tipB);
-    // var cross = api.math.cross(u, v);
-    // var referenceAngle = (cross.z >= 0);
-    // var angleSign;
-    // var i;
-    //
-    // for(i=1; i < numberPoints; i++) {
-    //     centerTip = completePolygon[i];
-    //     tipA = completePolygon[i - 1]; //v1 = [i - 1] - i;
-    //     tipB = completePolygon[i + 1]; //v2 = [i + 1] - i;
-    //     u = api.math.createVectorFromPoints(centerTip, tipA);
-    //     v = api.math.createVectorFromPoints(centerTip, tipB);
-    //     cross = api.math.cross(u, v);
-    //     // angleSign = crossProduct(v1, v2).z > 0;
-    //     angleSign = (cross.z >= 0);
-    //     if(angleSign !== referenceAngle) {
-    //         return false;
-    //     }
-    // }
-
     return true;
 };
 
@@ -334,16 +308,16 @@ api.gcode.createTabProperties = function(width, height) {
  * is notabs to do else the length is 4 and the tabs are defined in the points
  * at index 1 and 2.
  *
- * @param {Vector} startPoint - The starting point (considered 2D).
- * @param {Vector} endPoint - The ending point (considered 2D).
+ * @param {Vector} start - The starting point (considered 2D).
+ * @param {Vector} end - The ending point (considered 2D).
  * @param {TabProperties} The tab properties.
  * @return {Vector[]} The 2D points path for the cut.
  */
-api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) {
+api.gcode.pointsAccordingToTabs = function(start, end, tabProperties) {
     //We are not using the Z value:
-    var startPoint2D = api.math.createVector(startPoint.x, startPoint.y, 0);
-    var endPoint2D = api.math.createVector(endPoint.x, endPoint.y, 0);
-    var points = [startPoint2D, endPoint2D];
+    var start2D = api.math.createVector(start.x, start.y, 0);
+    var end2D = api.math.createVector(end.x, end.y, 0);
+    var points = [start2D, end2D];
 
     //No need of tabs
     if(tabProperties.height === 0 || tabProperties.width === 0) {
@@ -351,19 +325,19 @@ api.gcode.pointsAccordingToTabs = function(startPoint, endPoint, tabProperties) 
     }
 
     //Tabs bigger than the actual cut path
-    // var vector = api.math.createVector(endPoint2D.x - startPoint2D.x,
-    //         endPoint2D.y - startPoint2D.y, 0);
-    var vector = api.math.createVectorFromPoints(startPoint2D, endPoint2D);
+    // var vector = api.math.createVector(end2D.x - start2D.x,
+    //         end2D.y - start2D.y, 0);
+    var vector = api.math.createVectorFromPoints(start2D, end2D);
     var length2 = api.math.vectorLengthSquared(vector);
     if(length2 <= (tabProperties.width * tabProperties.width)) {
         return points;
     }
 
     //Create the intermediate points
-    var normalized = api.math.vectorNormalizedVector(vector);
+    var normalized = api.math.normalizedVector(vector);
     var distanceStartTab = (api.math.vectorLength(vector) - tabProperties.width) / 2;
-    // var pointA = api.math.createVector(startPoint2D.x, startPoint2D.y, 0);
-    var pointA = api.math.cloneVector(startPoint2D);
+    // var pointA = api.math.createVector(start2D.x, start2D.y, 0);
+    var pointA = api.math.cloneVector(start2D);
     pointA.x += normalized.x * distanceStartTab;
     pointA.y += normalized.y * distanceStartTab;
     // var pointB = api.math.createVector(pointA.x, pointA.y, 0);
@@ -402,7 +376,8 @@ api.gcode.jogTo = function(point) {
  *
  * @param {Vector} point - The point to reach.
  * @param {number} feedrate - The feed rate in inches per minutes.
- * @return {string} The generated G-Code.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given polygon.
  */
 api.gcode.moveTo = function(point, feedrate) {
     var code = "G1";
@@ -744,7 +719,7 @@ api.gcode.cutCircleWithTabs = function(
         return false;
     }
 
-    var startPoint = api.math.createVector(center.x + radius, center.y, 0);
+    var start = api.math.createVector(center.x + radius, center.y, 0);
     var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
     var useTabs = (tabProperties.height !== 0 && tabProperties.width !== 0);
     var codeTabs = [];
@@ -753,13 +728,13 @@ api.gcode.cutCircleWithTabs = function(
     var str = "";
     var tabAngle = 0;
     var normalAngle = 0;
-    var endPoint;
+    var end;
     var finalZ = -depth;
     var currentZ = 0;
     var tabZ = tabProperties.height - depth;
 
-    var codeWithoutTab = "G3 X" + startPoint.x.toFixed(5);
-    codeWithoutTab += " Y" +startPoint.y.toFixed(5);
+    var codeWithoutTab = "G3 X" + start.x.toFixed(5);
+    codeWithoutTab += " Y" +start.y.toFixed(5);
     codeWithoutTab += " I" + (-radius).toFixed(5) + feedrateString;
 
     if(useTabs === true) {
@@ -771,29 +746,29 @@ api.gcode.cutCircleWithTabs = function(
         } else {
             normalAngle = 180 - tabAngle;
 
-            endPoint = api.math.rotation2D(startPoint, center, normalAngle, 1);
-            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            end = api.math.rotation2D(start, center, normalAngle, 1);
+            str = "G3 X" + end.x.toFixed(5) + " Y" + end.y.toFixed(5);
             str += " R" + radius.toFixed(5) + feedrateString;
             codeTabs.push(str);
 
-            endPoint = api.math.rotation2D(endPoint, center, tabAngle, 1);
-            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            end = api.math.rotation2D(end, center, tabAngle, 1);
+            str = "G3 X" + end.x.toFixed(5) + " Y" + end.y.toFixed(5);
             str += " R" + radius.toFixed(5) + feedrateString;
             codeTabs.push(str);
 
-            endPoint = api.math.rotation2D(endPoint, center, normalAngle, 1);
-            str = "G3 X" + endPoint.x.toFixed(5) + " Y" + endPoint.y.toFixed(5);
+            end = api.math.rotation2D(end, center, normalAngle, 1);
+            str = "G3 X" + end.x.toFixed(5) + " Y" + end.y.toFixed(5);
             str += " R" + radius.toFixed(5) + feedrateString;
             codeTabs.push(str);
 
-            //To make sure we close the circle, we go to startPoint:
-            str = "G3 X" + startPoint.x.toFixed(5) + " Y" + startPoint.y.toFixed(5);
+            //To make sure we close the circle, we go to start:
+            str = "G3 X" + start.x.toFixed(5) + " Y" + start.y.toFixed(5);
             str += " R" + radius.toFixed(5) + feedrateString;
             codeTabs.push(str);
         }
     }
 
-    str = "G1 X" + startPoint.x.toFixed(5) + " Y" + startPoint.y.toFixed(5);
+    str = "G1 X" + start.x.toFixed(5) + " Y" + start.y.toFixed(5);
     str += feedrateString;
     code.push(str);
 
