@@ -50,13 +50,13 @@
 
         //Definition of a polygon with an angle superior to 180 degree
         var polygon180 = [];
-        polygon180.push(api.math.createVector(-1, -2, 3));
-        polygon180.push(api.math.createVector(0, -3, 1));
-        polygon180.push(api.math.createVector(3, -3, 0));
-        polygon180.push(api.math.createVector(0, -2, 3));
-        polygon180.push(api.math.createVector(4, 1, 0));
-        polygon180.push(api.math.createVector(0, 3, 2));
-        polygon180.push(api.math.createVector(-1, 2, 2));
+        polygon180.push(new api.math.Vector(-1, -2, 3));
+        polygon180.push(new api.math.Vector(0, -3, 1));
+        polygon180.push(new api.math.Vector(3, -3, 0));
+        polygon180.push(new api.math.Vector(0, -2, 3));
+        polygon180.push(new api.math.Vector(4, 1, 0));
+        polygon180.push(new api.math.Vector(0, 3, 2));
+        polygon180.push(new api.math.Vector(-1, 2, 2));
         printPath("polygon180", polygon180);
 
         console.log("Is polygon180 convex?");
@@ -76,14 +76,14 @@
 
         //Definition or a polygon without angle superior to 180 degree
         var polygonRegular = [];
-        polygonRegular.push(api.math.createVector(0, 0, 0));
-        polygonRegular.push(api.math.createVector(1, 0, 0));
-        polygonRegular.push(api.math.createVector(2, 1, 0));
-        polygonRegular.push(api.math.createVector(2, 3, 0));
-        polygonRegular.push(api.math.createVector(1, 4, 0));
-        polygonRegular.push(api.math.createVector(-1, 4, 0));
-        polygonRegular.push(api.math.createVector(-2, 3, 0));
-        polygonRegular.push(api.math.createVector(-2, 1, 0));
+        polygonRegular.push(new api.math.Vector(0, 0, 0));
+        polygonRegular.push(new api.math.Vector(1, 0, 0));
+        polygonRegular.push(new api.math.Vector(2, 1, 0));
+        polygonRegular.push(new api.math.Vector(2, 3, 0));
+        polygonRegular.push(new api.math.Vector(1, 4, 0));
+        polygonRegular.push(new api.math.Vector(-1, 4, 0));
+        polygonRegular.push(new api.math.Vector(-2, 3, 0));
+        polygonRegular.push(new api.math.Vector(-2, 1, 0));
         printPath("polygonRegular", polygonRegular);
 
         console.log("Is polygonRegular convex?");
@@ -105,10 +105,10 @@
         printCode("codePocketPolygonRegularConvex", codePocketPolygonRegularConvex);
 
         var convexPolygon = [];
-        convexPolygon.push(api.math.createVector(1, 1, 0));
-        convexPolygon.push(api.math.createVector(1, 2, 0));
-        convexPolygon.push(api.math.createVector(2, 2, 0));
-        convexPolygon.push(api.math.createVector(2, 1, 0));
+        convexPolygon.push(new api.math.Vector(1, 1, 0));
+        convexPolygon.push(new api.math.Vector(1, 2, 0));
+        convexPolygon.push(new api.math.Vector(2, 2, 0));
+        convexPolygon.push(new api.math.Vector(2, 1, 0));
         printPath("convexPolygon", convexPolygon);
 
         console.log("Is convexPolygon convex?");

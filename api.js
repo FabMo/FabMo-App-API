@@ -40,88 +40,77 @@ api.math.nearlyEqual = function(a, b, precision) {
  * @param {number} [z=0] - The z position.
  * @return {Vector} A vector.
  */
-api.math.createVector = function (x, y, z) {
-    return {
-        x : (x === undefined) ? 0 : x,
-        y : (y === undefined) ? 0 : y,
-        z : (z === undefined) ? 0 : z
-    };
+api.math.Vector = function(x, y, z) {
+    this.x = (x === undefined) ? 0 : x;
+    this.y = (y === undefined) ? 0 : y;
+    this.z = (z === undefined) ? 0 : z;
 };
 
-/**
- * Clones a vector.
- *
- * @param {Vector} vector - The vector to clone.
- * @return {Vector} A new vector.
- */
-api.math.cloneVector = function(vector) {
-    return api.math.createVector(vector.x, vector.y, vector.z);
-};
+api.math.Vector.prototype = {
+    // _x : function(x) {
+    //     if(x === undefined) {
+    //         return this.x;
+    //     }
+    //     this.x = parseFloat(x);  //TODO: parse to number, returns 0 if Nan
+    //     return this.x;
+    // }
 
+    /**
+     * Clones the vector.
+     *
+     * @return {Vector} A new vector.
+     */
+    clone : function() {
+        return new api.math.Vector(this.x, this.y, this.z);
+    },
 
-/**
- * Creates a vector going from point A to point B.
- * @param {Vector} pointA - Point A.
- * @param {Vector} pointB - Point B.
- * @return {Vector} A new vector going from point A to point B.
- */
-api.math.createVectorFromPoints = function(pointA, pointB) {
-    return api.math.createVector(
-        pointB.x - pointA.x,
-        pointB.y - pointA.y,
-        pointB.z - pointA.z
-    );
-};
+    /**
+     * Checks if two vectors are equal (i.e at the same position).
+     *
+     * @param {Vector} vector - The other vector.
+     * @param {number} [precision=api.math.FLOAT_PRECISION] - The precision of
+     * the comparison.
+     * @return {boolean} True if the two vectors are equal.
+     */
+    equal: function(vector, precision) {
+        var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
+        return (api.math.nearlyEqual(this.x, vector.x, p) &&
+            api.math.nearlyEqual(this.y, vector.y, p) &&
+            api.math.nearlyEqual(this.z, vector.z, p));
 
-/**
- * Checks if two vector are equal (i.e at the same position).
- *
- * @param {Vector} vectorA - Vector A.
- * @param {Vector} vectorB - Vector B.
- * @param {number} [precision=api.math.FLOAT_PRECISION] - The precision of the
- * comparison.
- * @return {boolean} True if the two vectors are equal.
- */
-api.math.vectorEqual = function(vectorA, vectorB, precision) {
-    var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
-    return api.math.nearlyEqual(vectorA.x, vectorB.x, p) &&
-        api.math.nearlyEqual(vectorA.y, vectorB.y, p) &&
-        api.math.nearlyEqual(vectorA.z, vectorB.z, p);
-};
+    },
 
-/**
- * Returns the squared length of the vector.
- *
- * @param {Vector} vector - The vector.
- * @return {number}  The squared length.
- */
-api.math.vectorLengthSquared = function(vector) {
-    return vector.x * vector.x + vector.y * vector.y + vector.z * vector.z;
-};
+    /**
+     * Returns the squared length of the vector.
+     *
+     * @return {number}  The squared length.
+     */
+    lengthSquared : function() {
+        return this.x * this.x + this.y * this.y + this.z * this.z;
+    },
 
-/**
- * Returns the length of the vector.
- *
- * @param {Vector} vector - The vector.
- * @return {number}  The length.
- */
-api.math.vectorLength = function(vector) {
-    return Math.sqrt(api.math.vectorLengthSquared(vector));
-};
+    /**
+     * Returns the length of the vector.
+     *
+     * @return {number}  The length.
+     */
+    length : function() {
+        return Math.sqrt(this.lengthSquared());
+    },
 
-/**
- * Returns the normalized vector (without changing the vector).
- *
- * @param {Vector} vector - The vector.
- * @return {Vector} The normalized vector.
- */
-api.math.normalizedVector = function(vector) {
-    var l = api.math.vectorLength(vector);
-    if(l === 0) {
-        return vector;
+    /**
+     * Returns the normalized vector (without changing the vector).
+     *
+     * @return {Vector} The normalized vector.
+     */
+    normalizedVector : function() {
+        var l = this.length();
+        if(l === 0) {
+            return this.clone();
+        }
+
+        return new api.math.Vector(this.x / l, this.y / l, this.z / l);
     }
-
-    return api.math.createVector(vector.x / l, vector.y / l, vector.z / l);
 };
 
 /**
@@ -131,7 +120,7 @@ api.math.normalizedVector = function(vector) {
  * @param {Vector} vectorB - Vector B.
  * @return {number} The scalar product.
  */
-api.math.scalar = function(vectorA, vectorB) {
+api.math.Vector.scalar = function(vectorA, vectorB) {
     return (vectorA.x * vectorB.x +
             vectorA.y * vectorB.y +
             vectorA.z * vectorB.z);
@@ -144,11 +133,25 @@ api.math.scalar = function(vectorA, vectorB) {
  * @param {Vector} vectorB - Vector B.
  * @return {Vector} The cross product.
  */
-api.math.cross = function(vectorA, vectorB) {
+api.math.Vector.cross = function(vectorA, vectorB) {
     var x = vectorA.y * vectorB.z - vectorA.z * vectorB.y;
     var y = vectorA.z * vectorB.x - vectorA.x * vectorB.z;
     var z = vectorA.x * vectorB.y - vectorA.y * vectorB.x;
-    return api.math.createVector(x, y, z);
+    return new api.math.Vector(x, y, z);
+};
+
+/**
+ * Creates a vector going from point A to point B.
+ * @param {Vector} pointA - Point A.
+ * @param {Vector} pointB - Point B.
+ * @return {Vector} A new vector going from point A to point B.
+ */
+api.math.Vector.fromPoints = function(pointA, pointB) {
+    return new api.math.Vector(
+        pointB.x - pointA.x,
+        pointB.y - pointA.y,
+        pointB.z - pointA.z
+    );
 };
 
 /**
@@ -166,8 +169,8 @@ api.math.rotation2D = function(point, center, angle, scale) {
     var angleRad = angle * Math.PI / 180;
     var cosAngle = Math.cos(angleRad);
     var sinAngle = Math.sin(angleRad);
-    var vector = api.math.createVector(point.x - center.x, point.y - center.y, 0);
-    var newPoint = api.math.createVector(center.x, center.y, 0);
+    var vector = new api.math.Vector(point.x - center.x, point.y - center.y, 0);
+    var newPoint = new api.math.Vector(center.x, center.y, 0);
     newPoint.x += scale * (vector.x * cosAngle - vector.y * sinAngle);
     newPoint.y += scale * (vector.x * sinAngle + vector.y * cosAngle);
     return newPoint;
@@ -196,7 +199,7 @@ api.math.barycenter2D = function(points) {
         sumY += points[i].y;
     }
 
-    return api.math.createVector(sumX / numberPoints, sumY / numberPoints, 0);
+    return new api.math.Vector(sumX / numberPoints, sumY / numberPoints, 0);
 };
 
 /**
@@ -209,9 +212,9 @@ api.math.barycenter2D = function(points) {
  * @return {boolean} True if the sign is positive or zero, else false.
  * */
 api.math.angleSignPoints = function(center, pointA, pointB) {
-    var u = api.math.createVectorFromPoints(center, pointA);
-    var v = api.math.createVectorFromPoints(center, pointB);
-    var cross = api.math.cross(u, v);
+    var u = api.math.Vector.fromPoints(center, pointA);
+    var v = api.math.Vector.fromPoints(center, pointB);
+    var cross = api.math.Vector.cross(u, v);
     return (cross.z >= 0);
 };
 
@@ -315,8 +318,8 @@ api.gcode.createTabProperties = function(width, height) {
  */
 api.gcode.pointsAccordingToTabs = function(start, end, tabProperties) {
     //We are not using the Z value:
-    var start2D = api.math.createVector(start.x, start.y, 0);
-    var end2D = api.math.createVector(end.x, end.y, 0);
+    var start2D = new api.math.Vector(start.x, start.y, 0);
+    var end2D = new api.math.Vector(end.x, end.y, 0);
     var points = [start2D, end2D];
 
     //No need of tabs
@@ -325,23 +328,18 @@ api.gcode.pointsAccordingToTabs = function(start, end, tabProperties) {
     }
 
     //Tabs bigger than the actual cut path
-    // var vector = api.math.createVector(end2D.x - start2D.x,
-    //         end2D.y - start2D.y, 0);
-    var vector = api.math.createVectorFromPoints(start2D, end2D);
-    var length2 = api.math.vectorLengthSquared(vector);
-    if(length2 <= (tabProperties.width * tabProperties.width)) {
+    var vector = api.math.Vector.fromPoints(start2D, end2D);
+    if(vector.lengthSquared() <= (tabProperties.width * tabProperties.width)) {
         return points;
     }
 
     //Create the intermediate points
-    var normalized = api.math.normalizedVector(vector);
-    var distanceStartTab = (api.math.vectorLength(vector) - tabProperties.width) / 2;
-    // var pointA = api.math.createVector(start2D.x, start2D.y, 0);
-    var pointA = api.math.cloneVector(start2D);
+    var normalized = vector.normalizedVector();
+    var distanceStartTab = (vector.length() - tabProperties.width) / 2;
+    var pointA = start2D.clone();
     pointA.x += normalized.x * distanceStartTab;
     pointA.y += normalized.y * distanceStartTab;
-    // var pointB = api.math.createVector(pointA.x, pointA.y, 0);
-    var pointB = api.math.cloneVector(pointA);
+    var pointB = pointA.clone();
     pointB.x += normalized.x * tabProperties.width;
     pointB.y += normalized.y * tabProperties.width;
 
@@ -486,7 +484,7 @@ api.gcode.cutPath2DWithTabs = function(
             for(i = this.normal.length-1; i >= 0; i--) {
                 straight = [];
                 for(j = this.normal[i].length - 1; j >= 0; j--) {
-                    straight.push(api.math.cloneVector(this.normal[i][j]));
+                    straight.push(this.normal[i][j].clone());
                 }
                 this.reversed.push(straight);
             }
@@ -508,23 +506,23 @@ api.gcode.cutPath2DWithTabs = function(
         var path3D = [];
         if(useTabs === true && straight.length === 4 && currentZ < tabZ) {
             point = straight[0];
-            path3D.push((api.math.createVector(point.x, point.y, currentZ)));
+            path3D.push((new api.math.Vector(point.x, point.y, currentZ)));
 
             point = straight[1];
-            path3D.push(api.math.createVector(point.x, point.y, currentZ));
-            path3D.push(api.math.createVector(point.x, point.y, tabZ));
+            path3D.push(new api.math.Vector(point.x, point.y, currentZ));
+            path3D.push(new api.math.Vector(point.x, point.y, tabZ));
 
             point = straight[2];
-            path3D.push(api.math.createVector(point.x, point.y, tabZ));
-            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            path3D.push(new api.math.Vector(point.x, point.y, tabZ));
+            path3D.push(new api.math.Vector(point.x, point.y, currentZ));
 
             point = straight[3];
-            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            path3D.push(new api.math.Vector(point.x, point.y, currentZ));
         } else {
             point = straight[0];
-            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            path3D.push(new api.math.Vector(point.x, point.y, currentZ));
             point = straight[straight.length - 1];
-            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            path3D.push(new api.math.Vector(point.x, point.y, currentZ));
         }
         return path3D;
     }
@@ -541,7 +539,7 @@ api.gcode.cutPath2DWithTabs = function(
     var point = controller.normal[0][0];
     var i = 0;
 
-    path3D.push(api.math.createVector(point.x, point.y, 0));
+    path3D.push(new api.math.Vector(point.x, point.y, 0));
     while(currentZ > finalZ) {
         currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
         currentPaths2D = controller.getCurrentPaths();
@@ -628,7 +626,7 @@ api.gcode.cutPolygonWithTabs = function(
     }
 
     point = completePolygon[0];
-    path.push(api.math.createVector(point.x, point.y, 0));
+    path.push(new api.math.Vector(point.x, point.y, 0));
 
     currentZ = 0;
     finalZ = -depth;
@@ -638,29 +636,29 @@ api.gcode.cutPolygonWithTabs = function(
         if(useTabs === true && currentZ < tabZ) {
             if(pathsWithTabs.length > 0 && pathsWithTabs[0].length > 0) {
                 point = pathsWithTabs[0][0];
-                path.push(api.math.createVector(point.x, point.y, currentZ));
+                path.push(new api.math.Vector(point.x, point.y, currentZ));
             }
             for(i=0; i < pathsWithTabs.length; i++) {
                 // Not pushing first one to avoid duplicate G-Code
                 point = pathsWithTabs[i][1];
-                path.push(api.math.createVector(point.x, point.y, currentZ));
+                path.push(new api.math.Vector(point.x, point.y, currentZ));
 
                 // Here a path length is equal to 2 (no tabs) or 4 (with tabs)
                 if(pathsWithTabs[i].length === 4) {
-                    path.push(api.math.createVector(point.x, point.y, tabZ));
+                    path.push(new api.math.Vector(point.x, point.y, tabZ));
 
                     point = pathsWithTabs[i][2];
-                    path.push(api.math.createVector(point.x, point.y, tabZ));
-                    path.push(api.math.createVector(point.x, point.y, currentZ));
+                    path.push(new api.math.Vector(point.x, point.y, tabZ));
+                    path.push(new api.math.Vector(point.x, point.y, currentZ));
 
                     point = pathsWithTabs[i][3];
-                    path.push(api.math.createVector(point.x, point.y, currentZ));
+                    path.push(new api.math.Vector(point.x, point.y, currentZ));
                 }
             }
         } else {
             for(i=0; i < completePolygon.length; i++) {
                 point = completePolygon[i];
-                path.push(api.math.createVector(point.x, point.y, currentZ));
+                path.push(new api.math.Vector(point.x, point.y, currentZ));
             }
         }
     }
@@ -728,12 +726,12 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
     var biggestLength = 0;
 
     for(i = 0; i < numberPoints; i++) {
-        vector = api.math.createVector(
+        vector = new api.math.Vector(
             center.x - polygon[i].x,
             center.y - polygon[i].y,
             0
         );
-        biggestLength = Math.max(api.math.vectorLengthSquared(vector), biggestLength);
+        biggestLength = Math.max(vector.lengthSquared(), biggestLength);
         vectors.push(vector);
     }
     vectors.push(vectors[0]);  //To follow completePolygon
@@ -744,7 +742,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
     }
 
     for(i = 0; i < numberPoints; i++) {
-        deltaPath.push(api.math.createVector(
+        deltaPath.push(new api.math.Vector(
             vectors[i].x / numberIteration,
             vectors[i].y / numberIteration,
             0
@@ -752,7 +750,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
     }
     deltaPath.push(deltaPath[0]);  //To follow completePolygon
 
-    path.push(api.math.createVector(polygon[0].x, polygon[0].y, 0));
+    path.push(new api.math.Vector(polygon[0].x, polygon[0].y, 0));
     currentZ = 0;
     finalZ = -depth;
     while(currentZ > finalZ) {
@@ -763,7 +761,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
         while(n > 0) {
             n = Math.max(n - 1, 0);
             for(i=0; i < numberPoints + 1; i++) {
-                path.push(api.math.createVector(
+                path.push(new api.math.Vector(
                     completePolygon[i].x + n * deltaPath[i].x,
                     completePolygon[i].y + n * deltaPath[i].y,
                     currentZ
@@ -791,7 +789,7 @@ api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
 
     function convertVertexToPoint(earcutPolygon, vertexIndex) {
         var xIndex = vertexIndex * 2;  // 2 because 2D
-        return api.math.createVector(
+        return new api.math.Vector(
             earcutPolygon[xIndex],
             earcutPolygon[xIndex + 1],
             0
@@ -866,12 +864,12 @@ api.gcode.cutCircleWithTabs = function(
         return false;
     }
 
-    var start = api.math.createVector(center.x + radius, center.y, 0);
+    var start = new api.math.Vector(center.x + radius, center.y, 0);
     var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
     var useTabs = (tabProperties.height !== 0 && tabProperties.width !== 0);
     var codeTabs = [];
     var code = [];
-    var maxTabAngle = 45;  //TODO: put this somewhere else
+    var MAX_TAB_ANGLE = 45;  //TODO: put this somewhere else
     var str = "";
     var tabAngle = 0;
     var normalAngle = 0;
@@ -887,7 +885,7 @@ api.gcode.cutCircleWithTabs = function(
     if(useTabs === true) {
         //perimeter = 2*pi*r; ratio = tabWidth / perimeter; tabAngle = 360 * ratio;
         tabAngle = (180 * tabProperties.width) / (Math.PI * radius);
-        if(tabAngle >= maxTabAngle) {
+        if(tabAngle >= MAX_TAB_ANGLE) {
             console.log("Tab angle = " + tabAngle);
             useTabs = false;
         } else {

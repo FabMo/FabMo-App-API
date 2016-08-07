@@ -7,26 +7,26 @@
 
 function testPoints() {
     var x = 5, y = 8;
-    var point2D = api.math.createVector(x, y, 0);
-    var point2DAuto = api.math.createVector(x, y);
-    if(api.math.vectorEqual(point2D, point2DAuto) === false) {
+    var point2D = new api.math.Vector(x, y, 0);
+    var point2DAuto = new api.math.Vector(x, y);
+    if(point2D.equal( point2DAuto) === false) {
         console.log("Error in point creation.");
         return;
     }
 
-    var u = api.math.createVector(1, 0, 0);
-    var v = api.math.createVector(1, 1, 0);
-    var w = api.math.createVector(1, -1, 0);
-    var crossUV = api.math.cross(u, v);
-    var crossUW = api.math.cross(u, w);
-    if(api.math.vectorEqual(crossUV, api.math.createVector(0, 0, 1)) === false) {
-        console.log("Error in api.math.cross.");
+    var u = new api.math.Vector(1, 0, 0);
+    var v = new api.math.Vector(1, 1, 0);
+    var w = new api.math.Vector(1, -1, 0);
+    var crossUV = api.math.Vector.cross(u, v);
+    var crossUW = api.math.Vector.cross(u, w);
+    if(crossUV.equal(new api.math.Vector(0, 0, 1)) === false) {
+        console.log("Error in api.math.Vector.cross.");
         console.log("crossUV: ");
         console.log(crossUV);
         return;
     }
-    if(api.math.vectorEqual(crossUW, api.math.createVector(0, 0, -1)) === false) {
-        console.log("Error in api.math.cross.");
+    if(crossUW.equal(new api.math.Vector(0, 0, -1)) === false) {
+        console.log("Error in api.math.Vector.cross.");
         console.log("crossUW: ");
         console.log(crossUW);
         return;
@@ -43,9 +43,9 @@ function testGeneral() {
         return;
     }
 
-    var a = api.math.createVector(1, 0);
-    var b = api.math.createVector(1, 1);
-    var c = api.math.createVector(0, 1);
+    var a = new api.math.Vector(1, 0);
+    var b = new api.math.Vector(1, 1);
+    var c = new api.math.Vector(0, 1);
     var abc = api.math.angleSignPoints(b, a, c);
     var bca = api.math.angleSignPoints(c, b, a);
     if(abc !== bca) {
@@ -59,14 +59,14 @@ function testGeneral() {
 function testPolygon() {
     // A regular polygon is a convex polygon with same size sides
     var regularPolygon = [
-        api.math.createVector(0, 0, 0),
-        api.math.createVector(1, 0, 0),
-        api.math.createVector(2, 1, 0),
-        api.math.createVector(2, 3, 0),
-        api.math.createVector(1, 4, 0),
-        api.math.createVector(-1, 4, 0),
-        api.math.createVector(-2, 3, 0),
-        api.math.createVector(-2, 1, 0)
+        new api.math.Vector(0, 0, 0),
+        new api.math.Vector(1, 0, 0),
+        new api.math.Vector(2, 1, 0),
+        new api.math.Vector(2, 3, 0),
+        new api.math.Vector(1, 4, 0),
+        new api.math.Vector(-1, 4, 0),
+        new api.math.Vector(-2, 3, 0),
+        new api.math.Vector(-2, 1, 0)
     ];
 
     if(api.math.isConvexPolygon(regularPolygon) === false) {
@@ -76,10 +76,10 @@ function testPolygon() {
 
     // A convex polygon
     var convexPolygon = [
-        api.math.createVector(1, 1, 0),
-        api.math.createVector(1, 2, 0),
-        api.math.createVector(2, 2, 0),
-        api.math.createVector(2, 1, 0),
+        new api.math.Vector(1, 1, 0),
+        new api.math.Vector(1, 2, 0),
+        new api.math.Vector(2, 2, 0),
+        new api.math.Vector(2, 1, 0),
     ];
 
     if(api.math.isConvexPolygon(convexPolygon) === false) {
@@ -89,13 +89,13 @@ function testPolygon() {
 
     // A polygon with an angle superior to 180 degree
     var polygon180 = [
-        api.math.createVector(-1, -2, 3),
-        api.math.createVector(0, -3, 1),
-        api.math.createVector(3, -3, 0),
-        api.math.createVector(0, -2, 3),
-        api.math.createVector(4, 1, 0),
-        api.math.createVector(0, 3, 2),
-        api.math.createVector(-1, 2, 2),
+        new api.math.Vector(-1, -2, 3),
+        new api.math.Vector(0, -3, 1),
+        new api.math.Vector(3, -3, 0),
+        new api.math.Vector(0, -2, 3),
+        new api.math.Vector(4, 1, 0),
+        new api.math.Vector(0, 3, 2),
+        new api.math.Vector(-1, 2, 2),
     ];
 
     if(api.math.isConvexPolygon(polygon180) === true) {
