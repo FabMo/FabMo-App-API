@@ -436,6 +436,151 @@ api.gcode.cutPath = function(path, feedrate, safeZ) {
 };
 
 /**
+ * Generates G-Code for cutting the path and letting tabs for each straight
+ * lines (if possible). The path is considered 2D on the XY plane.
+ *
+ * @param {Vector[]} path2D - The path.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {TabProperties} tabProperties - The tabs properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given path.
+ */
+api.gcode.cutPath2DWithTabs = function(
+    path2D, depth, cutProperties, tabProperties, safeZ
+) {
+    if(path2D.length < 2) {
+        return false;
+    }
+
+    function getPaths2DWithTabs(path, tabProperties) {
+        var i = 0;
+        var straightWithTabs = [];
+        var pathsWithTabs = [];
+        for(i=0; i < path.length - 1; i++) {
+            straightWithTabs = api.gcode.pointsAccordingToTabs(
+                    path[i],
+                    path[i+1],
+                    tabProperties
+            );
+            pathsWithTabs.push(straightWithTabs);
+        }
+        return pathsWithTabs;
+    }
+
+    var Paths2DWithTabsController = function(paths2DWithTabs) {
+        this.hasToReverse = true;
+        this.normal = paths2DWithTabs;
+        this.reversed = [];
+        this.setReversedPath();
+        console.log(this.normal);
+        console.log(this.reversed);
+    };
+
+    Paths2DWithTabsController.prototype = {
+        setReversedPath : function() {
+            var i = 0, j = 0;
+            var straight = [];
+            this.resersed  = [];
+            for(i = this.normal.length-1; i >= 0; i--) {
+                straight = [];
+                for(j = this.normal[i].length - 1; j >= 0; j--) {
+                    straight.push(api.math.cloneVector(this.normal[i][j]));
+                }
+                this.reversed.push(straight);
+            }
+        },
+
+        // The first time is called, it throws the normal path
+        // Returns the path to use and swipe for the next time it is asked
+        getCurrentPaths : function() {
+            this.hasToReverse = (this.hasToReverse === false);
+            if(this.hasToReverse === true) {
+                return this.reversed;
+            }
+            return this.normal;
+        }
+    };
+
+    function getPath3DFromStraightPath2D(straight, currentZ, tabZ, useTabs) {
+        var point;
+        var path3D = [];
+        if(useTabs === true && straight.length === 4 && currentZ < tabZ) {
+            point = straight[0];
+            path3D.push((api.math.createVector(point.x, point.y, currentZ)));
+
+            point = straight[1];
+            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            path3D.push(api.math.createVector(point.x, point.y, tabZ));
+
+            point = straight[2];
+            path3D.push(api.math.createVector(point.x, point.y, tabZ));
+            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+
+            point = straight[3];
+            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+        } else {
+            point = straight[0];
+            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+            point = straight[straight.length - 1];
+            path3D.push(api.math.createVector(point.x, point.y, currentZ));
+        }
+        return path3D;
+    }
+
+    var useTabs = (tabProperties.height !== 0);
+    var path3D = [];
+    var currentPaths2D = [];
+    var finalZ = -depth;
+    var currentZ = 0;
+    var tabZ = tabProperties.height - depth;
+    var controller = new Paths2DWithTabsController(
+        getPaths2DWithTabs(path2D, tabProperties)
+    );
+    var point = controller.normal[0][0];
+    var i = 0;
+
+    path3D.push(api.math.createVector(point.x, point.y, 0));
+    while(currentZ > finalZ) {
+        currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
+        currentPaths2D = controller.getCurrentPaths();
+
+        for(i=0; i < currentPaths2D.length; i++) {
+            path3D = path3D.concat(
+                getPath3DFromStraightPath2D(
+                    currentPaths2D[i], currentZ, tabZ, useTabs
+                )
+            );
+        }
+    }
+    console.log("path3D");
+    console.log(path3D);
+
+    return api.gcode.cutPath(path3D, cutProperties.feedrate, safeZ);
+};
+
+/**
+ * Generates G-Code for cutting the patth. The path is considered 2D on the XY
+ * plane.
+ *
+ * @param {Vector[]} path2D - The path.
+ * @param {number} depth - The depth in inches.
+ * @param {CutProperties} cutProperties - The cut properties.
+ * @param {number} [safeZ] - The safe Z position to go after the cut in inches.
+ * @return {string|boolean} The generated G-Code or false if impossible to
+ *                          parse the given path.
+ */
+api.gcode.cutPath2D = function(path, depth, cutProperties, safeZ) {
+    if(path.length < 2) {
+        return false;
+    }
+
+    var t = api.gcode.createTabProperties(0, 0);
+    return api.gcode.cutPath2DWithTabs(path, depth, cutProperties, t, safeZ);
+};
+
+/**
  * Generates G-Code for cutting the polygon and letting tabs. The order of the
  * polygon tips is important. The bit will go to a point to the next one and
  * close the polygon by going from the last point to the first point. The
@@ -457,6 +602,8 @@ api.gcode.cutPolygonWithTabs = function(
         return false;
     }
 
+
+    // Cannot use cutPath2DWithTabs, it has a different behaviour
     var completePolygon = polygon.slice();
     completePolygon.push(completePolygon[0]);
     var pathsWithTabs = [];
