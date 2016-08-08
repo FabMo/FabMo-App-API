@@ -28,6 +28,7 @@ api.math.FLOAT_PRECISION = 0.001;
  * @return {boolean} True if the two values are nearly equal.
  */
 api.math.nearlyEqual = function(a, b, precision) {
+    "use strict";
     var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
     return Math.abs(b - a) <= p;
 };
@@ -41,6 +42,7 @@ api.math.nearlyEqual = function(a, b, precision) {
  * @return {Vector} A vector.
  */
 api.math.Vector = function(x, y, z) {
+    "use strict";
     this.x = (x === undefined) ? 0 : x;
     this.y = (y === undefined) ? 0 : y;
     this.z = (z === undefined) ? 0 : z;
@@ -61,6 +63,7 @@ api.math.Vector.prototype = {
      * @return {Vector} A new vector.
      */
     clone : function() {
+        "use strict";
         return new api.math.Vector(this.x, this.y, this.z);
     },
 
@@ -73,6 +76,7 @@ api.math.Vector.prototype = {
      * @return {boolean} True if the two vectors are equal.
      */
     equal: function(vector, precision) {
+        "use strict";
         var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
         return (api.math.nearlyEqual(this.x, vector.x, p) &&
             api.math.nearlyEqual(this.y, vector.y, p) &&
@@ -86,6 +90,7 @@ api.math.Vector.prototype = {
      * @return {number}  The squared length.
      */
     lengthSquared : function() {
+        "use strict";
         return this.x * this.x + this.y * this.y + this.z * this.z;
     },
 
@@ -95,6 +100,7 @@ api.math.Vector.prototype = {
      * @return {number}  The length.
      */
     length : function() {
+        "use strict";
         return Math.sqrt(this.lengthSquared());
     },
 
@@ -104,6 +110,7 @@ api.math.Vector.prototype = {
      * @return {Vector} The normalized vector.
      */
     normalizedVector : function() {
+        "use strict";
         var l = this.length();
         if(l === 0) {
             return this.clone();
@@ -121,6 +128,7 @@ api.math.Vector.prototype = {
  * @return {number} The scalar product.
  */
 api.math.Vector.scalar = function(vectorA, vectorB) {
+    "use strict";
     return (vectorA.x * vectorB.x +
             vectorA.y * vectorB.y +
             vectorA.z * vectorB.z);
@@ -134,6 +142,7 @@ api.math.Vector.scalar = function(vectorA, vectorB) {
  * @return {Vector} The cross product.
  */
 api.math.Vector.cross = function(vectorA, vectorB) {
+    "use strict";
     var x = vectorA.y * vectorB.z - vectorA.z * vectorB.y;
     var y = vectorA.z * vectorB.x - vectorA.x * vectorB.z;
     var z = vectorA.x * vectorB.y - vectorA.y * vectorB.x;
@@ -147,6 +156,7 @@ api.math.Vector.cross = function(vectorA, vectorB) {
  * @return {Vector} A new vector going from point A to point B.
  */
 api.math.Vector.fromPoints = function(pointA, pointB) {
+    "use strict";
     return new api.math.Vector(
         pointB.x - pointA.x,
         pointB.y - pointA.y,
@@ -165,11 +175,13 @@ api.math.Vector.fromPoints = function(pointA, pointB) {
  * @return {Vector} The result of the transformation.
  */
 api.math.rotation2D = function(point, center, angle, scale) {
+    "use strict";
     // newPoint = scale * point * exp(i angle) + center
     var angleRad = angle * Math.PI / 180;
     var cosAngle = Math.cos(angleRad);
     var sinAngle = Math.sin(angleRad);
-    var vector = new api.math.Vector(point.x - center.x, point.y - center.y, 0);
+    // var vector = new api.math.Vector(point.x - center.x, point.y - center.y, 0);
+    var vector = new api.math.Vector.fromPoints(center, point);
     var newPoint = new api.math.Vector(center.x, center.y, 0);
     newPoint.x += scale * (vector.x * cosAngle - vector.y * sinAngle);
     newPoint.y += scale * (vector.x * sinAngle + vector.y * cosAngle);
@@ -185,6 +197,7 @@ api.math.rotation2D = function(point, center, angle, scale) {
  * array is empty.
  */
 api.math.barycenter2D = function(points) {
+    "use strict";
     var numberPoints = points.length;
     var sumX = 0;
     var sumY = 0;
@@ -212,6 +225,7 @@ api.math.barycenter2D = function(points) {
  * @return {boolean} True if the sign is positive or zero, else false.
  * */
 api.math.angleSignPoints = function(center, pointA, pointB) {
+    "use strict";
     var u = api.math.Vector.fromPoints(center, pointA);
     var v = api.math.Vector.fromPoints(center, pointB);
     var cross = api.math.Vector.cross(u, v);
@@ -226,6 +240,7 @@ api.math.angleSignPoints = function(center, pointA, pointB) {
  * @return {boolean} True if the polygon is convex.
  */
 api.math.isConvexPolygon = function(polygon) {
+    "use strict";
     var numberPoints = polygon.length;
     if(numberPoints <= 2) {
         return false;
@@ -281,27 +296,38 @@ api.gcode = {};
  * @param {number} [feedrate=0] - The feed rate in inches per minutes.
  * @return {CutProperties} The cut properties.
  */
-api.gcode.createCutProperties = function(bitWidth, bitLength, stepover, feedrate) {
-    return {
-        bitLength : (bitLength === undefined) ? 0 : bitLength,
-        bitWidth : (bitWidth === undefined) ? 0 : bitWidth,
-        stepover : (stepover === undefined) ? 0 : stepover,
-        feedrate : (feedrate === undefined) ? 0 : feedrate
-    };
+api.gcode.CutProperties = function(bitWidth, bitLength, stepover, feedrate) {
+    "use strict";
+    this.bitLength = (bitLength === undefined) ? 0 : bitLength;
+    this.bitWidth = (bitWidth === undefined) ? 0 : bitWidth;
+    this.stepover = (stepover === undefined) ? 0 : stepover;
+    this.feedrate = (feedrate === undefined) ? 0 : feedrate;
 };
 
 /**
- * Creates the tab properties.
+ * Creates the tab properties. It is considered as not used if the width or the
+ * height is equal or below to zero.
  *
  * @param {number} [width=0] - Width in inches.
  * @param {number} [length=0] - Length in inches.
  * @return {TabProperties} The tab properties.
  */
-api.gcode.createTabProperties = function(width, height) {
-    return {
-        width : (width === undefined) ? 0 : width,
-        height : (height === undefined) ? 0 : height
-    };
+api.gcode.TabProperties = function(width, height) {
+    "use strict";
+    this.width = (width === undefined) ? 0 : width;
+    this.height = (height === undefined) ? 0 : height;
+};
+
+api.gcode.TabProperties.prototype = {
+    /**
+     * If the tab are correct and can be used.
+     *
+     * @return {boolean} True if the tab can be used.
+     */
+    isUsed : function() {
+        "use strict";
+        return (this.width > 0 && this.height > 0);
+    }
 };
 
 //TODO: change function name
@@ -317,6 +343,7 @@ api.gcode.createTabProperties = function(width, height) {
  * @return {Vector[]} The 2D points path for the cut.
  */
 api.gcode.pointsAccordingToTabs = function(start, end, tabProperties) {
+    "use strict";
     //We are not using the Z value:
     var start2D = new api.math.Vector(start.x, start.y, 0);
     var end2D = new api.math.Vector(end.x, end.y, 0);
@@ -355,6 +382,7 @@ api.gcode.pointsAccordingToTabs = function(start, end, tabProperties) {
  * @return {string} The generated G-Code.
  */
 api.gcode.jogTo = function(point) {
+    "use strict";
     var code = "G0";
     if(point.x !== undefined) {
         code += " X" + point.x.toFixed(5);
@@ -378,6 +406,7 @@ api.gcode.jogTo = function(point) {
  *                          parse the given polygon.
  */
 api.gcode.moveTo = function(point, feedrate) {
+    "use strict";
     var code = "G1";
 
     if(feedrate === undefined) {
@@ -409,6 +438,7 @@ api.gcode.moveTo = function(point, feedrate) {
  * @return {string} The generated G-Code.
  */
 api.gcode.cutPath = function(path, feedrate, safeZ) {
+    "use strict";
     if(path.length === 0) {
         return "";
     }
@@ -448,6 +478,7 @@ api.gcode.cutPath = function(path, feedrate, safeZ) {
 api.gcode.cutPath2DWithTabs = function(
     path2D, depth, cutProperties, tabProperties, safeZ
 ) {
+    "use strict";
     if(path2D.length < 2) {
         return false;
     }
@@ -527,7 +558,6 @@ api.gcode.cutPath2DWithTabs = function(
         return path3D;
     }
 
-    var useTabs = (tabProperties.height !== 0);
     var path3D = [];
     var currentPaths2D = [];
     var finalZ = -depth;
@@ -547,7 +577,7 @@ api.gcode.cutPath2DWithTabs = function(
         for(i=0; i < currentPaths2D.length; i++) {
             path3D = path3D.concat(
                 getPath3DFromStraightPath2D(
-                    currentPaths2D[i], currentZ, tabZ, useTabs
+                    currentPaths2D[i], currentZ, tabZ, tabProperties.isUsed()
                 )
             );
         }
@@ -570,11 +600,12 @@ api.gcode.cutPath2DWithTabs = function(
  *                          parse the given path.
  */
 api.gcode.cutPath2D = function(path, depth, cutProperties, safeZ) {
+    "use strict";
     if(path.length < 2) {
         return false;
     }
 
-    var t = api.gcode.createTabProperties(0, 0);
+    var t = new api.gcode.TabProperties();
     return api.gcode.cutPath2DWithTabs(path, depth, cutProperties, t, safeZ);
 };
 
@@ -596,6 +627,7 @@ api.gcode.cutPath2D = function(path, depth, cutProperties, safeZ) {
 api.gcode.cutPolygonWithTabs = function(
     polygon, depth, cutProperties, tabProperties, safeZ
 ) {
+    "use strict";
     if(polygon.length < 3) {
         return false;
     }
@@ -612,9 +644,8 @@ api.gcode.cutPolygonWithTabs = function(
     var currentZ = 0;
     var tabZ = tabProperties.height - depth;
     var i = 0;
-    var useTabs = (tabProperties.height !== 0);
 
-    if(useTabs === true) {
+    if(tabProperties.isUsed() === true) {
         for(i=0; i < completePolygon.length - 1; i++) {
             straightWithTabs = api.gcode.pointsAccordingToTabs(
                     completePolygon[i],
@@ -633,7 +664,7 @@ api.gcode.cutPolygonWithTabs = function(
     while(currentZ > finalZ) {
         currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
 
-        if(useTabs === true && currentZ < tabZ) {
+        if(tabProperties.isUsed() === true && currentZ < tabZ) {
             if(pathsWithTabs.length > 0 && pathsWithTabs[0].length > 0) {
                 point = pathsWithTabs[0][0];
                 path.push(new api.math.Vector(point.x, point.y, currentZ));
@@ -682,11 +713,12 @@ api.gcode.cutPolygonWithTabs = function(
  *                          parse the given polygon.
  */
 api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
+    "use strict";
     if(polygon.length < 3) {
         return false;
     }
 
-    var t = api.gcode.createTabProperties(0, 0);
+    var t = new api.gcode.TabProperties();
     return api.gcode.cutPolygonWithTabs(polygon, depth, cutProperties, t, safeZ);
 };
 
@@ -705,6 +737,7 @@ api.gcode.cutPolygon = function(polygon, depth, cutProperties, safeZ) {
  *                          parse the given polygon.
  */
 api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
+    "use strict";
     if(polygon.length < 3) {
         return false;
     }
@@ -786,6 +819,7 @@ api.gcode.pocketConvexPolygon = function(polygon, depth, cutProperties, safeZ) {
  * @return {string} The generated G-Code.
  */
 api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
+    "use strict";
 
     function convertVertexToPoint(earcutPolygon, vertexIndex) {
         var xIndex = vertexIndex * 2;  // 2 because 2D
@@ -806,7 +840,6 @@ api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
 
     function triangulatePolygon(polygon) {
         var triangles = [];
-
         var earcutPolygon = [];
         var i = 0;
         for(i = 0; i < polygon.length; i++) {
@@ -860,13 +893,14 @@ api.gcode.pocketSimplePolygon = function(polygon, depth, cutProperties, safeZ) {
 api.gcode.cutCircleWithTabs = function(
     center, radius, depth, cutProperties, tabProperties, safeZ
 ) {
+    "use strict";
     if(radius === 0) {
         return false;
     }
 
     var start = new api.math.Vector(center.x + radius, center.y, 0);
     var feedrateString = " F" + cutProperties.feedrate.toFixed(5);
-    var useTabs = (tabProperties.height !== 0 && tabProperties.width !== 0);
+    var useTabs = tabProperties.isUsed();
     var codeTabs = [];
     var code = [];
     var MAX_TAB_ANGLE = 45;  //TODO: put this somewhere else
@@ -958,7 +992,8 @@ api.gcode.cutCircleWithTabs = function(
  *                          parse the given polygon.
  */
 api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
-    var t = api.gcode.createTabProperties(0, 0);
+    "use strict";
+    var t = new api.gcode.TabProperties();
     return api.gcode.cutCircleWithTabs(center, radius, depth, cutProperties, t, safeZ);
 };
 
@@ -976,6 +1011,7 @@ api.gcode.cutCircle = function(center, radius, depth, cutProperties, safeZ) {
  *                          parse the given polygon.
  */
 function pocketCircle(center, radius, depth, cutProperties, safeZ) {
+    "use strict";
     if(cutProperties.bitWidth > radius * 2) {
         return false;
     }
@@ -1015,6 +1051,7 @@ function pocketCircle(center, radius, depth, cutProperties, safeZ) {
  * @return {string} The generated G-Code.
  */
 api.gcode.comment = function(message) {
+    "use strict";
     return "(" + message + ")\n";  // Put \n in case people put G-Code afer that
 };
 

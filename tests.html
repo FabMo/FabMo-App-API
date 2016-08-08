@@ -42,11 +42,11 @@
         var bitLength = 0.4;
         var stepover = 0.3;
         var feedrate = 120;
-        var cutProperties = api.gcode.createCutProperties(bitWidth, bitLength, stepover, feedrate);
+        var cutProperties = new api.gcode.CutProperties(bitWidth, bitLength, stepover, feedrate);
         var safeZ = 3;
         var depth = 2;
 
-        var tabProperties = api.gcode.createTabProperties(1, 0.5);
+        var tabProperties = new api.gcode.TabProperties(1, 0.5);
 
         //Definition of a polygon with an angle superior to 180 degree
         var polygon180 = [];
