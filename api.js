@@ -7,6 +7,29 @@
 
 var api = {};
 
+api.INCH_TO_MILLIMETER = 25.4;
+api.MILLIMETER_TO_INCH = 0.03937008;
+
+/**
+ * Converts an unit in inches to an unit in millimeters.
+ *
+ * @param {Number} unit - The unit in inches.
+ * @return {Number} The unit in millimeters.
+ */
+api.convertInchToMillimeter = function(unit) {
+    return unit * api.INCH_TO_MILLIMETER;
+};
+
+/**
+ * Converts an unit in millimeters to an unit in inches.
+ *
+ * @param {Number} unit - The unit in millimeters.
+ * @return {Number} The unit in inches.
+ */
+api.convertMillimeterToInch = function(unit) {
+    return unit * api.MILLIMETER_TO_INCH;
+};
+
 /********************************* Math part **********************************/
 /**
  * This part defines functions for math functionalities.
