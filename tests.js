@@ -178,7 +178,16 @@ function testTabProperties() {
     console.log("testTabProperties OK");
 }
 
+// This function only calls functions. Used to see if functions crash.
+function simpleCalls() {
+    api.gcode.cutCircleWithTabs(
+        new api.math.Vector(), 5, 3, new api.CutProperties(1, 2, 0.3, 120),
+        new api.TabProperties(0.4, 0.3), 3
+    );
+}
+
 testPoints();
 testGeneral();
 testPolygon();
 testTabProperties();
+simpleCalls();
