@@ -38,7 +38,7 @@
         var cutProperties = new api.CutProperties(
             bitWidth, bitLength, stepover, feedrate
         );
-        var tabProperties = new api.gcode.TabProperties(1, 0.5);
+        var tabProperties = new api.TabProperties(1, 0.5);
 
         var codePocketNonConvex = api.gcode.pocketSimplePolygon(
             getNonConvexPolygon(), depth, cutProperties, safeZ

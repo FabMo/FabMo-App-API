@@ -87,7 +87,13 @@ function testGeneral() {
     var abc = api.math.angleSignPoints(b, a, c);
     var bca = api.math.angleSignPoints(c, b, a);
     if(abc !== bca) {
-        console.log("Error for angleSignPoints.");
+        console.log("Error for angleSignPoints (supposed to be the same).");
+        return;
+    }
+
+    var cba = api.math.angleSignPoints(b, c, a);
+    if(abc === cba) {
+        console.log("Error for angleSignPoints (supposed to be different).");
         return;
     }
 
@@ -120,49 +126,49 @@ function testPolygon() {
 }
 
 function testTabProperties() {
-    var tabNotUsed = new api.gcode.TabProperties();
+    var tabNotUsed = new api.TabProperties();
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a width and a height undefined.");
         return;
     }
 
-    tabNotUsed = new api.gcode.TabProperties(0, 1);
+    tabNotUsed = new api.TabProperties(0, 1);
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a width equals to 0.");
         return;
     }
 
-    tabNotUsed = new api.gcode.TabProperties(1, 0);
+    tabNotUsed = new api.TabProperties(1, 0);
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a height equals to 0.");
         return;
     }
 
-    tabNotUsed = new api.gcode.TabProperties(-1, 1);
+    tabNotUsed = new api.TabProperties(-1, 1);
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a width inferior to 0.");
         return;
     }
 
-    tabNotUsed = new api.gcode.TabProperties(1, -1);
+    tabNotUsed = new api.TabProperties(1, -1);
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a height inferior to 0.");
         return;
     }
 
-    tabNotUsed = new api.gcode.TabProperties(-3, -1);
+    tabNotUsed = new api.TabProperties(-3, -1);
     if(tabNotUsed.isUsed() === true) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Used with a width and a height < 0");
         return;
     }
 
-    var tabUsed = new api.gcode.TabProperties(3, 1);
+    var tabUsed = new api.TabProperties(3, 1);
     if(tabUsed.isUsed() === false) {
         console.log("Error for TabProperties.isUsed().");
         console.log("Not used with a width and a height > 0");
