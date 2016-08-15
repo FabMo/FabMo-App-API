@@ -1,4 +1,32 @@
-/*jslint todo: true, browser: true, continue: true, white: true*/
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: api.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: api.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/*jslint todo: true, browser: true, continue: true, white: true*/
 /*global earcut*/
 
 /**
@@ -69,7 +97,7 @@ api.math.FLOAT_PRECISION = 0.001;
 api.math.nearlyEqual = function(a, b, precision) {
     "use strict";
     var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
-    return Math.abs(b - a) <= p;
+    return Math.abs(b - a) &lt;= p;
 };
 
 /**
@@ -111,8 +139,8 @@ api.math.Vector.prototype = {
     equal: function(vector, precision) {
         "use strict";
         var p = (precision === undefined) ? api.math.FLOAT_PRECISION : precision;
-        return (api.math.nearlyEqual(this.x, vector.x, p) &&
-            api.math.nearlyEqual(this.y, vector.y, p) &&
+        return (api.math.nearlyEqual(this.x, vector.x, p) &amp;&amp;
+            api.math.nearlyEqual(this.y, vector.y, p) &amp;&amp;
             api.math.nearlyEqual(this.z, vector.z, p));
 
     },
@@ -239,7 +267,7 @@ api.math.barycenter2D = function(points) {
         return false;
     }
 
-    for(i = 0; i < numberPoints; i++) {
+    for(i = 0; i &lt; numberPoints; i++) {
         sumX += points[i].x;
         sumY += points[i].y;
     }
@@ -274,7 +302,7 @@ api.math.angleSignPoints = function(center, pointA, pointB) {
 api.math.isConvexPolygon = function(polygon) {
     "use strict";
     var numberPoints = polygon.length;
-    if(numberPoints <= 2) {
+    if(numberPoints &lt;= 2) {
         return false;
     }
     if(numberPoints === 3) {
@@ -292,7 +320,7 @@ api.math.isConvexPolygon = function(polygon) {
     var angleSign;
     var i;
 
-    for(i=1; i < numberPoints; i++) {
+    for(i=1; i &lt; numberPoints; i++) {
         angleSign = api.math.angleSignPoints(
             completePolygon[i],
             completePolygon[i - 1],
@@ -356,7 +384,7 @@ api.TabProperties.prototype = {
      */
     isUsed : function() {
         "use strict";
-        return (this.width > 0 && this.height > 0);
+        return (this.width > 0 &amp;&amp; this.height > 0);
     }
 };
 
@@ -395,7 +423,7 @@ api.gcode = (function() {
 
         //Tabs bigger than the actual cut path
         var vector = api.math.Vector.fromPoints(start2D, end2D);
-        if(vector.lengthSquared() <= (tabProperties.width * tabProperties.width)) {
+        if(vector.lengthSquared() &lt;= (tabProperties.width * tabProperties.width)) {
             return points;
         }
 
@@ -621,7 +649,7 @@ api.gcode = (function() {
             var i = 0;
             var feedrateString = " F" + feedrate.toFixed(5);
 
-            for(i=0; i < path.length; i++) {
+            for(i=0; i &lt; path.length; i++) {
                 code.push(
                     "G1 X" + path[i].x.toFixed(5) +
                     " Y" + path[i].y.toFixed(5) +
@@ -656,7 +684,7 @@ api.gcode = (function() {
             path2D, depth, cutProperties, tabProperties, safeZ
         ) {
             "use strict";
-            if(path2D.length < 2) {
+            if(path2D.length &lt; 2) {
                 return false;
             }
 
@@ -664,7 +692,7 @@ api.gcode = (function() {
                 var i = 0;
                 var straightWithTabs = [];
                 var pathsWithTabs = [];
-                for(i=0; i < path.length - 1; i++) {
+                for(i=0; i &lt; path.length - 1; i++) {
                     straightWithTabs = pointsAccordingToTabs(
                         path[i],
                         path[i+1],
@@ -710,7 +738,7 @@ api.gcode = (function() {
             function getPath3DFromStraightPath2D(straight, currentZ, tabZ, useTabs) {
                 var point;
                 var path3D = [];
-                if(useTabs === true && straight.length === 4 && currentZ < tabZ) {
+                if(useTabs === true &amp;&amp; straight.length === 4 &amp;&amp; currentZ &lt; tabZ) {
                     point = straight[0];
                     path3D.push((new api.math.Vector(point.x, point.y, currentZ)));
 
@@ -749,7 +777,7 @@ api.gcode = (function() {
                 currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
                 currentPaths2D = controller.getCurrentPaths();
 
-                for(i=0; i < currentPaths2D.length; i++) {
+                for(i=0; i &lt; currentPaths2D.length; i++) {
                     path3D = path3D.concat(
                         getPath3DFromStraightPath2D(
                             currentPaths2D[i], currentZ, tabZ, tabProperties.isUsed()
@@ -777,7 +805,7 @@ api.gcode = (function() {
          */
         cutPath2D : function(path, depth, cutProperties, safeZ) {
             "use strict";
-            if(path.length < 2) {
+            if(path.length &lt; 2) {
                 return false;
             }
 
@@ -808,7 +836,7 @@ api.gcode = (function() {
             polygon, depth, cutProperties, tabProperties, safeZ
         ) {
             "use strict";
-            if(polygon.length < 3) {
+            if(polygon.length &lt; 3) {
                 return false;
             }
 
@@ -826,7 +854,7 @@ api.gcode = (function() {
             var i = 0;
 
             if(tabProperties.isUsed() === true) {
-                for(i=0; i < completePolygon.length - 1; i++) {
+                for(i=0; i &lt; completePolygon.length - 1; i++) {
                     straightWithTabs = pointsAccordingToTabs(
                         completePolygon[i],
                         completePolygon[i+1],
@@ -844,12 +872,12 @@ api.gcode = (function() {
             while(currentZ > finalZ) {
                 currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
 
-                if(tabProperties.isUsed() === true && currentZ < tabZ) {
-                    if(pathsWithTabs.length > 0 && pathsWithTabs[0].length > 0) {
+                if(tabProperties.isUsed() === true &amp;&amp; currentZ &lt; tabZ) {
+                    if(pathsWithTabs.length > 0 &amp;&amp; pathsWithTabs[0].length > 0) {
                         point = pathsWithTabs[0][0];
                         path.push(new api.math.Vector(point.x, point.y, currentZ));
                     }
-                    for(i=0; i < pathsWithTabs.length; i++) {
+                    for(i=0; i &lt; pathsWithTabs.length; i++) {
                         // Not pushing first one to avoid duplicate G-Code
                         point = pathsWithTabs[i][1];
                         path.push(new api.math.Vector(point.x, point.y, currentZ));
@@ -867,7 +895,7 @@ api.gcode = (function() {
                         }
                     }
                 } else {
-                    for(i=0; i < completePolygon.length; i++) {
+                    for(i=0; i &lt; completePolygon.length; i++) {
                         point = completePolygon[i];
                         path.push(new api.math.Vector(point.x, point.y, currentZ));
                     }
@@ -898,7 +926,7 @@ api.gcode = (function() {
          */
         cutPolygon : function(polygon, depth, cutProperties, safeZ) {
             "use strict";
-            if(polygon.length < 3) {
+            if(polygon.length &lt; 3) {
                 return false;
             }
 
@@ -926,7 +954,7 @@ api.gcode = (function() {
          */
         pocketConvexPolygon : function(polygon, depth, cutProperties, safeZ) {
             "use strict";
-            if(polygon.length < 3) {
+            if(polygon.length &lt; 3) {
                 return false;
             }
 
@@ -946,7 +974,7 @@ api.gcode = (function() {
             var n = 0;
             var biggestLength = 0;
 
-            for(i = 0; i < numberPoints; i++) {
+            for(i = 0; i &lt; numberPoints; i++) {
                 vector = new api.math.Vector(
                     center.x - polygon[i].x,
                     center.y - polygon[i].y,
@@ -962,7 +990,7 @@ api.gcode = (function() {
                 return false;
             }
 
-            for(i = 0; i < numberPoints; i++) {
+            for(i = 0; i &lt; numberPoints; i++) {
                 deltaPath.push(new api.math.Vector(
                         vectors[i].x / numberIteration,
                         vectors[i].y / numberIteration,
@@ -979,7 +1007,7 @@ api.gcode = (function() {
 
                 //Starting by numberIteration to cut inside-out
                 for(n = numberIteration; n >= 0; n--) {
-                    for(i=0; i < numberPoints + 1; i++) {
+                    for(i=0; i &lt; numberPoints + 1; i++) {
                         path.push(new api.math.Vector(
                                 completePolygon[i].x + n * deltaPath[i].x,
                                 completePolygon[i].y + n * deltaPath[i].y,
@@ -1035,14 +1063,14 @@ api.gcode = (function() {
                 var triangles = [];
                 var earcutPolygon = [];
                 var i = 0;
-                for(i = 0; i < polygon.length; i++) {
+                for(i = 0; i &lt; polygon.length; i++) {
                     earcutPolygon.push(polygon[i].x);
                     earcutPolygon.push(polygon[i].y);
                 }
 
                 var trianglesVertices = earcut(earcutPolygon);
 
-                for(i = 0; i < trianglesVertices.length; i += 3) {
+                for(i = 0; i &lt; trianglesVertices.length; i += 3) {
                     triangles.push(
                         convertTriangleVertexIndicesToTriangle(
                             earcutPolygon,
@@ -1060,7 +1088,7 @@ api.gcode = (function() {
             var trianglesCode = [];
             var i = 0;
 
-            for(i = 0; i < triangles.length; i++) {
+            for(i = 0; i &lt; triangles.length; i++) {
                 trianglesCode.push(
                     this.pocketConvexPolygon(
                         triangles[i], depth, cutProperties, safeZ
@@ -1157,7 +1185,7 @@ api.gcode = (function() {
                 currentZ = Math.max(currentZ - cutProperties.bitLength, finalZ);
                 code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
 
-                if(useTabs === true && currentZ < tabZ) {
+                if(useTabs === true &amp;&amp; currentZ &lt; tabZ) {
                     code.push(codeTabs[0]);
                     code.push("G1 Z" + tabZ.toFixed(5) + feedrateString);
                     code.push(codeTabs[1]);
@@ -1241,7 +1269,7 @@ api.gcode = (function() {
                 //From inside to outside
                 code.push(codeGoCenter);
                 code.push("G1 Z" + currentZ.toFixed(5) + feedrateString);
-                while(deltaRadius < radius) {
+                while(deltaRadius &lt; radius) {
                     deltaRadius = Math.min(deltaRadius + deltaMove, radius);
                     newX = center.x + deltaRadius;
                     code.push("G1 X" + newX.toFixed(5) + feedrateString);
@@ -1257,3 +1285,26 @@ api.gcode = (function() {
         }
     };
 }());
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="api.CutProperties.html">CutProperties</a></li><li><a href="api.math.Vector.html">Vector</a></li><li><a href="api.TabProperties.html">TabProperties</a></li></ul><h3>Namespaces</h3><ul><li><a href="api.html">api</a></li><li><a href="api.gcode.html">gcode</a></li><li><a href="api.math.html">math</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Mon Aug 15 2016 16:23:48 GMT+0200 (CEST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
