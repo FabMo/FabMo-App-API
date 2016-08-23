@@ -19,7 +19,7 @@ application projects (polygon and circle cut and pocketting, G-Code
 generation...).
 
 This API assumes the applications are made for 3 axis cnc machines. The Z axis
-represents the height (positive) and the depth (negative). Polygon and circle
+represents the height (positive) and the depth (negative). Polygons and circles
 are in 2D in the plane XY.
 
 We are open to suggestion for improving this API, any kind of feedback are

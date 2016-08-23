@@ -29,14 +29,14 @@
             document.getElementById("code").value = code;
         }
 
-        var bitWidth = 0.3;
-        var bitLength = 0.4;
+        var bitDiameter = 0.3;
+        var passDepth = 0.4;
         var stepover = 0.3;
         var feedrate = 120;
         var safeZ = 3;
         var depth = 2;
         var cutProperties = new api.CutProperties(
-            bitWidth, bitLength, stepover, feedrate
+            bitDiameter, passDepth, stepover, feedrate
         );
         var tabProperties = new api.TabProperties(1, 0.5);
 
