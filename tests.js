@@ -184,6 +184,11 @@ function simpleCalls() {
         new api.math.Vector(), 5, 3, new api.CutProperties(1, 2, 0.3, 120),
         new api.TabProperties(0.4, 0.3), 3
     );
+
+    // api.gcode.pocketInnerConvexPolygon(
+    //     getConvexPolygon(), 3, new api.CutProperties(1, 2, 0.3, 120),
+    //     true, 3
+    // );
 }
 
 testPoints();
