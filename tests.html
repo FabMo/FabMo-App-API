@@ -13,7 +13,7 @@
     <br />
     <textarea id="code" name="" cols="30" rows="10"></textarea>
 
-    <script src="lib/earcut.js" type="text/javascript"></script>
+    <script src="lib/offset.min.js" type="text/javascript"></script>
     <script src="lib/api.js" type="text/javascript"></script>
     <script src="tests.js" type="text/javascript"></script>
     <script type="text/javascript">
@@ -40,16 +40,16 @@
         );
         var tabProperties = new api.TabProperties(1, 0.5);
 
-        // var codePocketNonConvex = api.gcode.pocketSimplePolygon(
-        //     getNonConvexPolygon(), depth, cutProperties, safeZ
-        // );
-        // printCodeInTextarea("codePocketNonConvex", codePocketNonConvex);
-
-        var codePocketInnerConvex = api.gcode.pocketInnerConvexPolygon(
-           getConvexPolygon(), 3, cutProperties,
-           true, 3
+        var codePocketNonConvex = api.gcode.pocketSimplePolygon(
+            getNonConvexPolygon(), depth, cutProperties, safeZ
         );
-        printCodeInTextarea("codePocketInnerConvex", codePocketInnerConvex);
+        printCodeInTextarea("codePocketNonConvex", codePocketNonConvex);
+
+        // var codePocketInnerConvex = api.gcode.pocketInnerConvexPolygon(
+        //    getConvexPolygon(), 3, cutProperties,
+        //    true, 3
+        // );
+        // printCodeInTextarea("codePocketInnerConvex", codePocketInnerConvex);
 
         // var codePocketConvex = api.gcode.pocketConvexPolygon(
         //    getConvexPolygon(), 3, new api.CutProperties(1, 2, 0.3, 120), 3
