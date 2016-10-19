@@ -1,5 +1,8 @@
 # FabMo-App-API
 
+**This branch is about making a pocketing function for any polygons using
+[polygon-offset](https://github.com/w8r/polygon-offset).**
+
 Library for helping FabMo app developpers.
 
 This API uses the [earcut library](https://github.com/mapbox/earcut) for
